@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { reactive, watch, ref } from "vue";
-import { Check, Star, Zap } from "lucide-vue-next";
+import { Check, Zap } from "lucide-vue-next";
+import DeviceIcon from "./DeviceIcon.vue";
+import { deviceIcons } from "../device-icons";
 import BaseModal from "./BaseModal.vue";
 import {
   removeWol,
@@ -29,6 +31,7 @@ const protocols = [
 ];
 
 interface ConnectionFormState {
+  icon: string;
   version: number;
   id: string | null;
   name: string;
@@ -53,6 +56,7 @@ const busy = ref(false);
 
 function blankForm(): ConnectionFormState {
   return {
+    icon: "auto",
     version: 0,
     id: null,
     name: "",
@@ -81,6 +85,7 @@ function resetForm() {
       tags: Array.isArray(props.connection.tags)
         ? props.connection.tags.join(", ")
         : "",
+      icon: props.connection.settings?.icon || "auto",
       favorite: Boolean(props.connection.favorite),
       clipboard: props.connection.settings?.clipboard === "text",
     });
@@ -157,11 +162,6 @@ async function submit() {
   <BaseModal
     :open="open"
     :title="connection ? '编辑连接' : '新建连接'"
-    :description="
-      connection
-        ? '更新设备信息与连接参数。'
-        : '保存一台远程设备，之后可以一键发起安全会话。'
-    "
     size="lg"
     @close="!busy && emit('close')"
   >
@@ -179,6 +179,16 @@ async function submit() {
           aria-label="连接名称"
           autocomplete="off"
         />
+      </el-form-item>
+      <el-form-item label="设备图标">
+        <div class="device-icon-options" role="group" aria-label="设备图标">
+          <button v-for="option in deviceIcons" :key="option.value" type="button"
+            :aria-label="option.label" :aria-pressed="form.icon === option.value"
+            @click="form.icon = option.value">
+            <DeviceIcon :icon="option.value" :os="form.protocol === 'RDP' ? 'Windows' : ''" :size="32" />
+            <span>{{ option.label }}</span>
+          </button>
+        </div>
       </el-form-item>
       <el-form-item label="所属分组">
         <el-select
@@ -319,49 +329,6 @@ async function submit() {
         </div>
       </div>
 
-      <div
-        class="mt-2 flex items-center justify-between gap-3 rounded-xl border border-line bg-soft px-3 py-2.5"
-      >
-        <div class="flex min-w-0 flex-1 items-center gap-2 text-faint">
-          <Star :size="15" class="flex-none" />
-          <p class="text-[12px] font-semibold leading-5 text-ink">
-            添加到收藏<span
-              class="ml-1.5 text-[11px] font-normal text-faint max-[479px]:ml-0 max-[479px]:block"
-              >收藏的连接会固定显示在侧边栏快速访问中。</span
-            >
-          </p>
-        </div>
-        <el-switch
-          v-model="form.favorite"
-          class="flex-none"
-          aria-label="添加到收藏"
-        />
-      </div>
-
-      <div
-        class="mb-2.5 mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 border-t border-dashed border-line pt-3"
-      >
-        <span class="text-[11.5px] font-bold text-muted">本地信息</span>
-        <span class="text-[11px] leading-4 text-faint"
-          >标签与备注仅保存在此浏览器，不会写入 NAS。</span
-        >
-      </div>
-      <el-form-item label="标签">
-        <el-input
-          v-model="form.tags"
-          placeholder="逗号分隔，例如：设计, 主力设备"
-          aria-label="标签"
-        />
-      </el-form-item>
-      <el-form-item label="备注" class="!mb-0">
-        <el-input
-          v-model="form.notes"
-          type="textarea"
-          :rows="2"
-          placeholder="补充说明、设备用途或其他信息…"
-          aria-label="备注"
-        />
-      </el-form-item>
     </el-form>
 
     <template #footer>
@@ -378,3 +345,11 @@ async function submit() {
     </template>
   </BaseModal>
 </template>
+
+<style scoped>
+.device-icon-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.device-icon-options button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-2); font-size: 11px; }
+.device-icon-options button[aria-pressed="true"] { border-color: var(--accent-strong); background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-strong); }
+.device-icon-options button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+@media (max-width: 480px) { .device-icon-options { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>

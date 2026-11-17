@@ -17,6 +17,7 @@ type User struct {
 	CSRF  string `json:"csrfToken"`
 }
 type Settings struct {
+	Icon              string `json:"icon,omitempty"`
 	Security          string `json:"security"`
 	Clipboard         string `json:"clipboard"`
 	CertificatePolicy string `json:"certificatePolicy"`
@@ -56,6 +57,7 @@ type Display struct {
 	DPI    int `json:"dpi"`
 }
 type sessionRequest struct {
+	Wallpaper        *bool   `json:"wallpaper"`
 	RenderMode       string  `json:"renderMode"`
 	CertificateCheck string  `json:"certificateCheck"`
 	ConnectionID     string  `json:"connectionId"`
@@ -64,6 +66,7 @@ type sessionRequest struct {
 	Ref              string  `json:"ephemeralCredentialRef"`
 }
 type Session struct {
+	Wallpaper              *bool              `json:"wallpaper,omitempty"`
 	RenderMode             string             `json:"renderMode,omitempty"`
 	CertificateFingerprint string             `json:"-"`
 	Origin                 string             `json:"-"`

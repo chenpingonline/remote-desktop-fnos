@@ -40,6 +40,10 @@ func (w *diagnosticWriter) Write(p []byte) (int, error) {
 }
 func diagnosticCode(line []byte) string {
 	for _, candidate := range []struct{ text, code string }{
+		{"Unable to load client plugin", "ENGINE_PLUGIN_LOAD_FAILED"},
+		{"winpr_int_assert", "ENGINE_ASSERTION_FAILED"},
+		{"freerdp_pre_connect failed", "ENGINE_PRECONNECT_FAILED"},
+		{"freerdp_post_connect failed", "ENGINE_POSTCONNECT_FAILED"},
 		{"certificate store initialization failed", "CERTIFICATE_STORE_INIT_FAILED"},
 		{"home directory for storage", "INHERITED_HOME_UNWRITABLE"},
 		{"Certificate validation failed", "CERTIFICATE_REJECTED"},

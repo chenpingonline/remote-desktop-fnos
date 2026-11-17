@@ -138,7 +138,7 @@ func (a *App) sessionAPI(w http.ResponseWriter, r *http.Request, u User, id stri
 		}
 	}
 	origin, _ := browserOrigin(r)
-	s := &Session{CertificateFingerprint: fingerprint, Origin: origin, ID: randomID(), Owner: u.UID, ConnectionID: c.ID, Config: c, RenderMode: in.RenderMode, Display: in.Display, Timezone: in.Timezone, State: "CREATED", CreatedAt: time.Now().UTC()}
+	s := &Session{CertificateFingerprint: fingerprint, Origin: origin, ID: randomID(), Owner: u.UID, ConnectionID: c.ID, Config: c, Wallpaper: in.Wallpaper, RenderMode: in.RenderMode, Display: in.Display, Timezone: in.Timezone, State: "CREATED", CreatedAt: time.Now().UTC()}
 	s.ExpiresAt = s.CreatedAt.Add(90 * time.Second)
 	if in.Ref != "" {
 		key := sha256.Sum256([]byte(in.Ref))
@@ -197,6 +197,7 @@ func params(s *Session) map[string]string {
 	p := map[string]string{"hostname": s.Config.Host, "port": strconv.Itoa(s.Config.Port), "username": s.Login.Username, "password": s.Login.Password, "domain": s.Login.Domain, "security": "nla", "ignore-cert": "false", "disable-audio": "true", "enable-drive": "false", "enable-printing": "false", "enable-sftp": "false", "read-only": "false", "resize-method": "none", "disable-copy": "true", "disable-paste": "true"}
 	if s.Config.Protocol == "rdp" {
 		p["resize-method"] = "display-update"
+		p["enable-wallpaper"] = strconv.FormatBool(s.Wallpaper == nil || *s.Wallpaper)
 		// Enable GFX and adaptive encoding by default; retain a text-focused fallback.
 		p["force-lossless"] = "false"
 		p["disable-gfx"] = "false"
@@ -322,6 +323,7 @@ func (a *App) tunnel(w http.ResponseWriter, r *http.Request, u User) {
 		delete(p, k)
 	}
 	if e != nil {
+		log.Printf("remote-desktop engine_handshake_failed session=%s", s.ID)
 		finish("PROTOCOL_ERROR")
 		return
 	}

@@ -1255,8 +1255,9 @@
 .native-desktop .integrated-tools .desktop-actions > button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 7px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--text-2); font-size: 12px; font-weight: 600; }
 .native-desktop .integrated-tools .desktop-actions > button:hover { background: var(--surface-3); color: var(--text); }
 .native-desktop .integrated-tools .desktop-actions > .session-settings-active { background: var(--surface-2); color: var(--brand); }
-.native-desktop .desktop-overlay.integrated-overlay { top: 0; right: 12px; width: 0; max-width: none; padding: 0; border: 0; box-shadow: none; background: transparent; }
-.native-desktop .integrated-overlay .session-settings { top: 10px; right: 0; max-width: calc(100vw - 24px); }
+/* Keep retry settings above the connection progress layer (z-index: 30). */
+.native-desktop .desktop-overlay.integrated-overlay { top: 0; left: auto; right: 12px; width: 0; max-width: none; padding: 0; border: 0; box-shadow: none; background: transparent; z-index: 40; }
+.native-desktop .integrated-overlay .session-settings { top: 10px; right: 0; width: min(440px, calc(100vw - 24px)); max-width: calc(100vw - 24px); }
 .native-desktop .integrated-overlay .desktop-message { position: absolute; top: 10px; right: 0; width: min(440px, calc(100vw - 24px)); height: auto; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
 @media (max-width: 1000px) {
   .remote-session-header { flex-wrap: wrap; gap: 0; padding: 6px 10px; }
@@ -1332,3 +1333,30 @@
 @media (pointer: coarse) {
   .native-desktop .session-settings-heading button { min-height: 44px; width: 44px; }
 }
+
+.native-desktop .session-wallpaper-switch {
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  flex: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--text-3);
+  cursor: pointer;
+  position: relative;
+}
+.native-desktop .session-wallpaper-switch::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  top: 2px;
+  left: 2px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+.native-desktop .session-wallpaper-switch:checked { background: var(--accent); }
+.native-desktop .session-wallpaper-switch:checked::after { left: 16px; }
+.native-desktop .session-wallpaper-switch:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 3px; }

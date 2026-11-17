@@ -9,9 +9,11 @@ document.documentElement.dataset.density = 'compact';
 document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'light';
 const encode = (...parts: (string | number)[]) => parts.map(p => `${Array.from(String(p)).length}.${p}`).join(',') + ';';
 const workspacePreview = new URLSearchParams(location.search).has('workspace');
-const mockConnections = ['台式电脑', 'MacBook Pro', '测试服务器'].map((name, i) => ({ id: `preview-${i}`, name, protocol: 'vnc', host: '127.0.0.1', port: 5900, credentialId: 'saved', settings: { clipboard: 'text' } }));
+const mockConnections = ['台式电脑', 'MacBook Pro', '测试服务器'].map((name, i) => ({ id: `preview-${i}`, name, protocol: new URLSearchParams(location.search).has('rdp') ? 'rdp' : 'vnc', host: '127.0.0.1', port: 5900, credentialId: 'saved', settings: { clipboard: 'text' } }));
 const deletedSessions: string[] = [];
 (window as any).__deletedSessions = deletedSessions;
+const createdSessions: any[] = [];
+(window as any).__createdSessions = createdSessions;
 let sessionCounter = 0;
 const nativeFetch = window.fetch.bind(window);
 window.fetch = async (input, init) => {
@@ -21,10 +23,12 @@ window.fetch = async (input, init) => {
     let data: any = { items: [] };
     if (path === 'me') data = { uid: 'preview', name: '界面验收' };
     else if (path === 'connections') data = { items: mockConnections };
-    else if (path === 'sessions' && init?.method === 'POST') data = { id: `design-preview-${++sessionCounter}` };
+    else if (path === 'sessions' && init?.method === 'POST') { createdSessions.push(JSON.parse(String(init.body))); data = { id: `design-preview-${++sessionCounter}` }; }
+    else if (path.endsWith('/certificate')) data = { status: 'trusted', check: 'preview-check', expiresAt: new Date(Date.now()+60000).toISOString() };
     else if (path.endsWith('/ticket')) data = { ticket: 'preview', webSocketPath: `ws://${location.host}/session-preview-tunnel` };
     else if (init?.method === 'DELETE') deletedSessions.push(path.split('/')[1]);
-    else if (path.startsWith('sessions/')) data = { state: 'ACTIVE' };
+    else if (path.startsWith('sessions/')) data = previewParams.has('failed')
+      ? { state: 'FAILED', endReason: 'CONNECT_TIMEOUT' } : { state: 'ACTIVE' };
     return new Response(JSON.stringify(data), { headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/api/v1/sessions/design-preview')) return new Response(JSON.stringify(url.endsWith('/ticket')
@@ -65,7 +69,7 @@ const NativeSocket = window.WebSocket;
   constructor(url: string, protocols: string[]) {
     if (!url.includes('/session-preview-tunnel')) return new NativeSocket(url, protocols);
     setTimeout(() => { this.readyState = 1; this.onopen?.(new Event('open'));
-      this.push(encode('', 'preview') + renderFrame(innerWidth, innerHeight));
+      this.push(encode('', 'preview') + (previewParams.has('failed') ? '' : renderFrame(innerWidth, innerHeight)));
     }, 30);
   }
   push(data: string) { this.onmessage?.({ data }); }
@@ -76,7 +80,7 @@ const NativeSocket = window.WebSocket;
       } else if (op === 'size') {
         const [width, height] = args.map(Number);
         displayRequests.push({ width, height, time: Date.now() });
-        if (previewParams.has('ignore-resize')) return;
+        if (previewParams.has('ignore-resize') || previewParams.has('failed')) return;
         setTimeout(() => this.push(renderFrame(width, height)), Number(previewParams.get('resize-delay')) || 20);
       } else if (op === 'mouse') {
         mouseRequests.push(args);

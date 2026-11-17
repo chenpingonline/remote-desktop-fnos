@@ -9,6 +9,7 @@
 #include <openssl/x509.h>
 #include <openssl/evp.h>
 #include <freerdp/crypto/certificate.h>
+#include <freerdp/crypto/certificate_store.h>
 #include <freerdp/settings.h>
 #include <winpr/ssl.h>
 
@@ -44,23 +45,22 @@ int main(int argc, char** argv) {
     umask(077);
     if (!winpr_InitializeSSL(WINPR_SSL_INIT_DEFAULT)) {X509_free(cert);return 6;}
     rdpSettings* settings=freerdp_settings_new(FALSE);
-    rdpCertificateStore* store=settings?certificate_store_new(settings):NULL;
-    char* fingerprint=crypto_cert_fingerprint(cert);
-    char* subject=crypto_cert_subject(cert);
-    char* issuer=crypto_cert_issuer(cert);
-    rdpCertificateData* entry=(fingerprint&&subject&&issuer)?certificate_data_new(argv[1],(UINT16)port,subject,issuer,fingerprint):NULL;
+    rdpCertificateStore* store=settings?freerdp_certificate_store_new(settings):NULL;
+    rdpCertificate* native_cert=freerdp_certificate_new_from_der(buffer,length);
+    rdpCertificateData* entry=native_cert?freerdp_certificate_data_new(argv[1],(UINT16)port,native_cert):NULL;
     int result=6;
     if (store&&entry) {
-        int match=certificate_data_match(store,entry);
+        int match=freerdp_certificate_store_contains_data(store,entry);
         if (match==0) {puts("This exact certificate is already trusted for this host and port");result=0;}
         else if (match==-1) {fputs("A different certificate is already pinned; refusing to replace it\n",stderr);result=7;}
-        else if (match==1 && certificate_data_print(store,entry)) {
+        else if (match==1 && freerdp_certificate_store_save_data(store,entry)) {
             puts("Confirmed SHA256 pinned for this host and port; other certificates still require verification");result=0;
         }
     }
-    if (entry) certificate_data_free(entry);
-    if (store) certificate_store_free(store);
+    if (entry) freerdp_certificate_data_free(entry);
+    if (native_cert) freerdp_certificate_free(native_cert);
+    if (store) freerdp_certificate_store_free(store);
     if (settings) freerdp_settings_free(settings);
-    free(fingerprint);free(subject);free(issuer);X509_free(cert);
+    X509_free(cert);
     return result;
 }

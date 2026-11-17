@@ -58,6 +58,9 @@ func (s *Supervisor) launch(ctx context.Context) error {
 	// A forked worker must not hold Wait open through inherited log pipes.
 	cmd.WaitDelay = 2 * time.Second
 	cmd.Env = append(append(os.Environ(), s.runtimeEnv...), "LD_LIBRARY_PATH="+filepath.Join(filepath.Dir(s.path), "../lib"), "SSL_CERT_DIR="+filepath.Join(filepath.Dir(s.path), "../ca-certificates"), "OPENSSL_MODULES="+filepath.Join(filepath.Dir(s.path), "../lib/ossl-modules"))
+	// FreeRDP forwards warnings/errors through guacd at debug level. Keep
+	// that transport enabled, but suppress FreeRDP informational/debug events.
+	cmd.Env = append(cmd.Env, "WLOG_LEVEL=WARN")
 	diagnostics := &diagnosticWriter{emit: func(code string) { log.Printf("remote-desktop engine_diagnostic=%s", code) }}
 	cmd.Stdout = diagnostics
 	cmd.Stderr = diagnostics

@@ -31,8 +31,11 @@ import hashlib,sys
 assert hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest()=='8bc45675da96d7b6f39728160181e3d4ff3c08f460f6d26de5805b642bf13f2b','native source hash mismatch'
 PY
 cp "$archive" scripts/native/
-docker build --platform "linux/$arch" -t remote-desktop-native:1.6.0-$arch scripts/native
-container=$(docker create --platform "linux/$arch" remote-desktop-native:1.6.0-$arch)
+python3 scripts/fetch-freerdp.py
+freerdp_version=$(python3 -c 'import json; print(json.load(open("scripts/native/freerdp-source.json"))["version"])')
+native_image="remote-desktop-native:guac1.6.0-freerdp${freerdp_version}-$arch"
+docker build --platform "linux/$arch" -t "$native_image" scripts/native
+container=$(docker create --platform "linux/$arch" "$native_image")
 rm -rf build/native
 mkdir -p build/native
 docker cp "$container:/out/." build/native/

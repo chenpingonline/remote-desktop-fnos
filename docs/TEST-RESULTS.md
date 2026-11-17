@@ -1,5 +1,20 @@
 # 本轮验证记录
 
+## 2026-11-17：0.1.47 FreeRDP 3.33.1
+
+- FreeRDP / WinPR 3.33.1 官方源码 SHA-256 已校验，Guacamole 1.6.0 实际链接 freerdp3；导出的私有库不含 freerdp2/winpr2。
+- 加载实际导出库读取版本为 3.33.1；FFmpeg、cliprdr、drdynvc、disp 和 rdpgfx 内置通道检查通过；动态依赖闭包与 WinPR MD4 已知向量自检通过。
+- 真实 guacd/FreeRDP 对合成 TLS 服务：匹配主机/端口/SHA256 后进入 NLA；证书变化拒绝；无会话授权、共享信任、其他端口共享信任及已信任证书与会话指纹不一致均被拒绝。合成服务没有执行 Windows 登录。
+- 新版证书辅助工具验证：错误 SHA 拒绝、其他主机记录保留、重复写入幂等、不同指纹不自动替换、文件权限 0600。
+- 真实 guacd/LibVNCClient 对合成 RFB 服务：同时提供 ARD/VNC 密码时选择密码模式；密码模式首帧通过；只有 ARD 时明确拒绝。
+- 干净 bookworm-slim 容器、禁用外部网络、UID/GID 925：只读挂载导出的私有运行库，RDP/VNC 插件均初始化并按预期拒绝关闭的目标端口；日志 `build/freerdp-clean-runtime.log`。不作为 fnOS ABI 或真实远端连接的证明。
+- 回归发现 FreeRDP 3.31+ 缓存初始化时序与 Guacamole 1.6.0 不兼容，已按上游 bb1ba8e 的实现将 GDI 和绘制回调移至 PostConnect，消除连接前的 NULL cache 断言。另对新版头文件的弃用警告保留为警告，其他编译错误仍阻断构建。
+- Go race 测试、前端类型检查/生产构建与 19 项前端单测通过。未安装 NAS；真实 Windows 登录、桌面画面、动态缩放和双向剪贴板仍待实机验收。
+- 本机构建环境原有 QEMU 7.0，Ubuntu 仓库 QEMU 8.2.2 也在隔离的 grep 检查中出现内部 SIGSEGV。已校验并启用 tonistiigi 官方发布的 QEMU 10.2.3（发布包 SHA-256 `ca19f8d202b977904f70fa6464b5ef9439740951d40f89730d2f2981f853bfaa`），基础命令与最终原生构建通过。该工具仅用于 Colima 构建虚拟机，不进入 FPK。
+- 完整 `scripts/build.sh amd64` 通过，145 个 ELF 的 amd64 架构与包目录校验通过。产物 `dist/remote-desktop-0.1.47-x86.fpk`；包内 manifest、程序 `--version` 均为 0.1.47，包内依赖记录 FreeRDP/WinPR 3.33.1 且无 2.x 库；SHA-256 为 `e709c028fc31777c82bc918b9cdd2890600ae66a8858e2e5071b9fbfb3a307b3`。打包原生文件与干净容器已测导出文件逐个哈希一致。
+
+## 初始验证记录
+
 日期：2026-11-09。测试来自本地开发环境，未连接真实 fnOS / Windows / Mac。
 
 - Go race 检查：用户归属隔离、伪造开发身份、CSRF、未知字段拒绝、凭据认证加密与篡改检测、并发临时凭据单次领取、会话限额、配置版本冲突、配置变更撤销旧票据、8 路并发票据消费、显示同步前保持连接中、配对密钥备份恢复、单实例数据锁、管理员设置、引擎端口冲突与幂等停止。
@@ -121,3 +136,43 @@ Computer Use 在用户现有 Chrome 远程桌面页观察到已连接和“剪�
 Control+V 在 Mac 不产生原生 paste 事件，原处理却统一拦截并等待 paste。现单独处理 Mac 的逻辑 Control+V：在按键手势中读取本机文字，顺序发送剪贴板和远端粘贴键；权限受限时仍发送远端粘贴键，不覆盖远端已有剪贴板，并提示可用 Command+V 或面板。异步读取检查剪贴板版本和活动焦点，长按不重复发送。
 
 10 项浏览器回归通过，新增真实浏览器 Control+V（不注入 paste 事件）的文字发送顺序和权限拒绝后手动发送文字粘贴两项用例；隧道远端为模拟。前端类型/构建、Node 6 项、Go race、FPK 包树检查通过。包内 manifest、Linux amd64 程序 --version 和 SHA-256 核对为 0.1.18。Computer Use 选择用户当前远程桌面页超时，未取得该轮页面操作或实机验收证据；未安装 NAS。
+
+## 0.1.49 FreeRDP 升级后连接超时诊断（2026-11-17）
+
+通过既有 fnOS OAuth 会话直接确认 NAS 为 0.1.48/running；最新 server.log 止于 22:24:18 启动记录，NLA crypto 自检通过，没有本次连接阶段记录。用户此前已确认清晰优先仍超时，不能据此归因为 GFX 或密码错误。Computer Use 初始化超时，未操作用户页面。
+
+0.1.49 纳入此前尚未交付的原生阶段标记，并增加应用到 guacd 的握手开始、失败和就绪记录，以及 guacd 创建客户端/插件加载失败分类。仅输出固定枚举及服务端会话 ID，不输出原始错误、账号、密码或目标。
+
+完整构建、Go race、前端类型检查/构建、Node 单元测试及原生证书回归通过。新包导出的实际私有引擎在隔离 x86 容器中通过 NLA 与 GFX 持续画面测试，八个原生阶段标记均出现；此为合成 FreeRDP shadow 服务，不能替代用户 Windows/fnOS 验收。包内 manifest、x86 ELF 架构和 SHA-256 已核对。日志位于 build/rdp-full-qa/package-0.1.49.log 和 diagnostic-shadow/。
+
+## 0.1.50 / 0.1.51 认证等待定位及修复
+
+0.1.49 和 0.1.50 均经应用中心原位升级成功（status=2/progress=100），实际版本与运行状态核对。0.1.49 的实机重试在 23:08:24 接受证书，23:09:03 才完成登录和启动绘制。0.1.50 开启 FreeRDP 自身 DEBUG 阈值后，23:14:06 进入 Negotiate，23:14:49 才完成凭据准备、选择 NTLM，并在同秒完成 NLA、登录和绘制。用户确认升级前可登录，当前为邮箱用户名、域留空的微软账户。应用 30 秒超时早于这次 43 秒的等待完成。
+
+新增 patch-nla-account-auth.py：空域且无 DOMAIN\user 前缀、或明确 MicrosoftAccount 的账户直接使用 none,ntlm；显式域保持 Negotiate。NLA、密码与证书策略不变。隔离无外网的 FreeRDP shadow 测试使用一次性邮箱形式账户和不响应的本地 KDC：旧引擎停在凭据获取并返回 776；新包引擎完成 NLA 与持续 GFX 图像接收，且 KDC 未收到请求。显式 QA.INVALID 域的对照仍保留 Kerberos 路径并在故障 KDC 上失败，没有被强制改为 NTLM。此对照不是 AD 服务器认证成功测试。
+
+0.1.51 完整构建、Go race、前端类型/构建、Node 单测、原生证书回归、145 个 x86 ELF 检查及包内 manifest/SHA-256 核对通过。回归日志位于 build/rdp-full-qa/kdc-before.log、kdc-after-final.log 和 kdc-explicit-domain.log。
+
+### 0.1.51 NAS 实机验收
+
+应用中心原位升级任务 status=2/progress=100；实际安装 0.1.51、状态 running，启动 NLA crypto 自检通过。用户保持原邮箱用户名、空域及密码重连，日志在 23:20:52 同一秒记录证书接受、NLA_CREDENTIALS_READY、NLA_NTLM_SELECTED、NLA_AUTH_COMPLETE、RDP_LOGIN_COMPLETE 与 RDP_RENDER_STARTED，消除了此前 43 秒的凭据准备等待。用户明确确认“已正常连接，能看到桌面”。本轮未据此扩大为所有域账户、所有 Windows 版本或长时间稳定性的验证。
+
+## 0.1.52 调试日志清理
+
+移除原生 RDP_STAGE 补丁、NTLM 路径提示及应用握手开始/成功日志；握手失败和原有脱敏错误分类继续保留。FreeRDP 日志阈值固定为 WARN，guacd 的 debug 管道仅用于接收其转发的底层警告/错误，应用仍丢弃白名单之外的文本。
+
+Go race、前端类型/构建、Node 单测及完整原生构建通过。诊断回归确认连接进度消息被丢弃，继承 WLOG_LEVEL=DEBUG 时子进程仍使用 WARN，必要错误仍穿过过滤管道。六类证书回归在 WARN 下通过。隔离无网络容器中，0.1.52 导出引擎以邮箱账户和黑洞 KDC 完成 NLA/GFX 持续画面测试，KDC 无请求，原生阶段标记及 FreeRDP 认证进度日志均未出现。
+
+FPK 内 manifest 与服务程序版本 0.1.52、145 个 amd64 ELF、包 SHA-256 已核对；检查包内服务及 RDP 插件，阶段标记已移除，WARN 设置与 none,ntlm 修复保留。产物 dist/remote-desktop-0.1.52-x86.fpk。本轮仅重新打包，未安装 NAS。日志 build/rdp-full-qa/package-0.1.52.log、quiet-0.1.52.log。
+
+### 0.1.52 NAS 原位升级
+
+按用户要求，经应用中心上传解析与约束检查后从 0.1.51 原位升级至 0.1.52，保留现有安装卷与数据卷。升级任务 status=2/progress=100；实际应用版本为 0.1.52、running/isOpen=true。23:36:08 服务启动日志确认 0.1.52 监听应用 Socket，NLA crypto self-test PASS。升级前的阶段诊断仍在历史日志中，新版本启动后未见阶段诊断。本轮验证升级与启动，未代替用户操作 Windows 重连。
+
+## 0.2.0 打包与 NAS 原位升级（2026-11-18）
+
+整合壁纸默认启用及会话开关、设备图标选择和 NAS 配置持久化、连接表单与菜单精简、侧栏版本展示、窄屏会话设置修复。保留 0.1.52 的 FreeRDP 微软账户认证修复和日志级别。
+
+完整 `scripts/build.sh amd64` 通过：Vue 类型检查与构建、Node 单测、Go race、包目录及 145 个 amd64 ELF 校验通过。包内 manifest 和服务程序 `--version` 均为 0.2.0；SHA-256：`64c947b14841b63511aae44011bdee78739bbac371f3ccd79dab51c190def055`。产物 `dist/remote-desktop-0.2.0-x86.fpk`。
+
+应用中心上传解析、系统约束及升级信息检查通过，沿用原安装卷与数据卷，从 0.1.52 原位升级。任务终态 status=2/progress=100；实际安装版本 0.2.0，status=running、isOpen=true。启动日志确认 NLA crypto self-test PASS，0.2.0 监听应用 Socket。本轮未操作实际 Windows 重连；此前新增功能已完成本地浏览器模拟验证。

@@ -1,0 +1,11 @@
+ARG RDP_QA_IMAGE=remote-desktop-full-rdp-qa
+FROM ${RDP_QA_IMAGE}
+RUN apt-get update && apt-get install -y --no-install-recommends xvfb libxfixes-dev libxdamage-dev libxtst-dev libxinerama-dev && rm -rf /var/lib/apt/lists/*
+ARG TARGETARCH
+RUN --mount=type=cache,target=/tmp/shadow-build,id=remote-desktop-shadow33-${TARGETARCH},sharing=locked \
+    cmake -S /tmp/freerdp -B /tmp/shadow-build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS_RELEASE="-O2 -DNDEBUG" -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+    -DCMAKE_INSTALL_PREFIX=/qa-shadow -DCMAKE_INSTALL_LIBDIR=lib -DWITH_CLIENT=OFF -DWITH_CLIENT_COMMON=OFF -DWITH_CLIENT_CHANNELS=OFF \
+    -DWITH_SERVER=ON -DWITH_SERVER_CHANNELS=ON -DWITH_SHADOW=ON -DWITH_PROXY=OFF -DWITH_X11=ON -DWITH_WAYLAND=OFF \
+    -DWITH_WINPR_TOOLS=OFF -DWITH_SAMPLE=OFF -DWITH_MANPAGES=OFF -DBUILD_TESTING=OFF -DWITH_FUSE=OFF -DWITH_PULSE=OFF -DWITH_ALSA=OFF \
+    -DWITH_FFMPEG=ON -DWITH_SWSCALE=ON -DWITH_OPUS=ON && cmake --build /tmp/shadow-build -j4 && cmake --install /tmp/shadow-build

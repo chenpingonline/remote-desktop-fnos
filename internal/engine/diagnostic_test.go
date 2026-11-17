@@ -26,8 +26,40 @@ func TestDiagnosticWriterSanitizesAndBounds(t *testing.T) {
 	}
 }
 
+func TestFreeRDP3FailureDiagnosticsRemainSanitized(t *testing.T) {
+	for _, tc := range []struct{ raw, code string }{
+		{"Unable to load client plugin private-path", "ENGINE_PLUGIN_LOAD_FAILED"},
+		{"DEBUG: stack private-username winpr_int_assert private-path", "ENGINE_ASSERTION_FAILED"},
+		{"freerdp_pre_connect failed: private-target", "ENGINE_PRECONNECT_FAILED"},
+		{"freerdp_post_connect failed: private-target", "ENGINE_POSTCONNECT_FAILED"},
+	} {
+		var codes []string
+		w := &diagnosticWriter{emit: func(code string) { codes = append(codes, code) }}
+		w.Write([]byte(tc.raw + "\n"))
+		if len(codes) != 1 || codes[0] != tc.code || len(w.pending) != 0 {
+			t.Fatalf("incorrect or unsanitized FreeRDP 3 diagnostic: %v", codes)
+		}
+	}
+}
+
+func TestConnectionProgressDiagnosticsAreDropped(t *testing.T) {
+	for _, line := range []string{
+		"Creating new client for protocol rdp",
+		"RDP_STAGE_CONTEXT_BEGIN", "RDP_STAGE_LOGIN_COMPLETE",
+		"RDP_AUTH_NTLM_PASSWORD_ACCOUNT", "Using package: Negotiate",
+		"Acquired client credentials", "Using direct NTLM",
+		"Authentication in progress...", "Authentication complete (output token size: 1)",
+		"NLA_STATE_FINAL", "CONNECTION_STATE_FINALIZATION",
+	} {
+		if code := diagnosticCode([]byte(line)); code != "" {
+			t.Fatalf("connection progress leaked as %s", code)
+		}
+	}
+}
+
 // The subprocess boundary must preserve categories while dropping raw text.
 func TestOwnedEngineDiagnosticPipe(t *testing.T) {
+	t.Setenv("WLOG_LEVEL", "DEBUG")
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +67,7 @@ func TestOwnedEngineDiagnosticPipe(t *testing.T) {
 	address := listener.Addr().String()
 	listener.Close()
 	script := filepath.Join(t.TempDir(), "fake-guacd")
-	if err = os.WriteFile(script, []byte("#!/bin/sh\nprintf 'Certificate validation failed private-password\\n' >&2\nexec sleep 60\n"), 0700); err != nil {
+	if err = os.WriteFile(script, []byte("#!/bin/sh\n[ \"$WLOG_LEVEL\" = WARN ] || exit 1\nprintf 'Certificate validation failed private-password\\n' >&2\nexec sleep 60\n"), 0700); err != nil {
 		t.Fatal(err)
 	}
 	sink := &diagnosticSink{ready: make(chan struct{}, 1)}

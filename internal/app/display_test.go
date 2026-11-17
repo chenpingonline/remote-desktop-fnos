@@ -113,3 +113,42 @@ func TestSessionRenderModeAPI(t *testing.T) {
 		})
 	}
 }
+
+func TestSessionWallpaperNegotiation(t *testing.T) {
+	for _, choice := range []string{"default", "on", "off", "invalid"} {
+		t.Run(choice, func(t *testing.T) {
+			a := testApp(t)
+			id := fixture(t, a)
+			body := map[string]any{"connectionId": id, "display": Display{800, 600, 96}, "certificateCheck": certificateToken(t, a, id, "alice")}
+			if choice == "on" {
+				body["wallpaper"] = true
+			}
+			if choice == "off" {
+				body["wallpaper"] = false
+			}
+			if choice == "invalid" {
+				body["wallpaper"] = "false"
+			}
+			response := call(a, "alice", "POST", "/sessions", body)
+			if choice == "invalid" {
+				if response.Code != 400 || len(a.sessions) != 0 {
+					t.Fatal("invalid wallpaper created a session")
+				}
+				return
+			}
+			result := object(t, response)
+			session := a.sessions[result["id"].(string)]
+			want := "true"
+			if choice == "off" {
+				want = "false"
+			}
+			if got := params(session)["enable-wallpaper"]; got != want {
+				t.Fatalf("wallpaper=%s, want %s", got, want)
+			}
+			session.Config.Protocol = "vnc"
+			if _, ok := params(session)["enable-wallpaper"]; ok {
+				t.Fatal("RDP wallpaper sent to VNC")
+			}
+		})
+	}
+}

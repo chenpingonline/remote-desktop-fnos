@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Command, Monitor, Terminal } from 'lucide-vue-next'
+import { Command, Monitor, Terminal, Laptop, Server, HardDrive, Cpu, Boxes } from 'lucide-vue-next'
 
 const props = defineProps<{
+  icon?: string
   os?: string
   size?: number
 }>()
 
 const variant = computed(() => {
+  if (['windows', 'mac', 'linux', 'desktop', 'laptop', 'server', 'nas', 'workstation', 'virtual'].includes(props.icon || '')) return props.icon!
   const value = (props.os || '').toLowerCase()
   if (value.includes('mac') || value.includes('ios')) return 'mac'
   if (value.includes('win')) return 'windows'
@@ -41,6 +43,7 @@ const style = computed(() => {
     </svg>
     <Command v-else-if="variant === 'mac'" :size="(size || 44) * 0.46" :stroke-width="2.2" />
     <Terminal v-else-if="variant === 'linux'" :size="(size || 44) * 0.45" :stroke-width="2" />
+    <component v-else-if="['laptop', 'server', 'nas', 'workstation', 'virtual'].includes(variant)" :is="({ laptop: Laptop, server: Server, nas: HardDrive, workstation: Cpu, virtual: Boxes } as Record<string, any>)[variant]" :size="(size || 44) * 0.46" :stroke-width="1.9" />
     <Monitor v-else :size="(size || 44) * 0.45" :stroke-width="1.9" />
   </span>
 </template>

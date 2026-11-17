@@ -28,6 +28,7 @@ export interface Connection {
   probe?: ConnectionProbe;
   version?: number;
   settings?: {
+    icon?: string;
     security: string;
     clipboard: string;
     certificatePolicy: string;
@@ -158,6 +159,7 @@ export interface WorkspaceState {
 }
 
 export interface ConnectionInput {
+  icon?: string;
   version?: number;
   clipboard?: boolean;
   wolEnabled?: boolean;

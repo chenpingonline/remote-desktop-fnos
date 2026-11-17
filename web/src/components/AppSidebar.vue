@@ -83,15 +83,14 @@ const accountItem = { label: '设置', to: '/settings', name: 'settings', icon: 
       </RouterLink>
     </nav>
 
-    <div class="flex-none border-t border-sidebar-line px-2.5 py-2">
+    <div class="flex-none border-t border-sidebar-line px-2.5 py-2" aria-label="应用版本">
       <div class="flex items-center gap-2 px-1.5">
-        <span class="sidebar-avatar relative grid h-7 w-7 flex-none place-items-center rounded-full text-[11px] font-bold">
-          {{ backend.user?.name?.slice(0,1) || 'U' }}
-          <span class="absolute -bottom-px -right-px h-2.5 w-2.5 rounded-full border-2 border-sidebar bg-[#70d69a]"></span>
+        <span class="grid h-7 w-7 flex-none place-items-center text-sidebar-muted">
+          <Monitor :size="18" :stroke-width="1.8" aria-hidden="true" />
         </span>
         <div class="flex min-w-0 flex-1 flex-col gap-px">
-          <span class="text-[12px] font-semibold leading-tight text-sidebar-text">{{ backend.user?.name }}</span>
-          <span class="text-[10px] leading-tight tabular-nums text-sidebar-faint">NAS 工作区 · {{ state.connections.length }} 台设备</span>
+          <span class="text-[12px] font-semibold leading-tight text-sidebar-text">远程桌面</span>
+          <span class="text-[10px] leading-tight tabular-nums text-sidebar-faint">版本 {{ backend.capabilities.version || '—' }}</span>
         </div>
       </div>
     </div>

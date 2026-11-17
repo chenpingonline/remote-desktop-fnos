@@ -11,6 +11,7 @@ import { api, ApiError } from "../api";
 import {
   performanceDisplay,
   loadRenderMode,
+  loadWallpaper,
   type RenderMode,
   loadDisplayScale,
   loadResolutionMode,
@@ -32,6 +33,7 @@ const sessions = ref<
     targetOs: string;
     clipboard: boolean;
     renderMode: RenderMode;
+    wallpaper: boolean;
     status: string;
     progress: Flow;
   }[]
@@ -129,8 +131,10 @@ async function start(
   flow.mode = "running";
   flow.error = "";
   const renderMode = loadRenderMode(c.protocol);
+  const wallpaper = loadWallpaper();
   const s = await api("/sessions", "POST", {
     renderMode,
+    ...(c.protocol === "rdp" ? { wallpaper } : {}),
     connectionId: c.id,
     certificateCheck: check,
     ephemeralCredentialRef,
@@ -151,6 +155,7 @@ async function start(
   sessions.value.push({
     id: s.id,
     renderMode,
+    wallpaper,
     status: "连接中",
     name: c.name,
     connectionId: c.id,
@@ -560,6 +565,7 @@ onBeforeUnmount(() => {
           :target-os="s.targetOs"
           :clipboard="s.clipboard"
           :render-mode="s.renderMode"
+          :wallpaper="s.wallpaper"
           @status-change="sessionStatus(s.id, $event)"
           @close="closeSession(s.id)"
           @reconnect="reconnect(s.connectionId, s.id)"

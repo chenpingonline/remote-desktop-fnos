@@ -510,7 +510,7 @@ async function probe(row: Connection) {
           <el-table-column label="设备" min-width="170">
             <template #default="{ row }: { row: Connection }">
               <div class="flex items-center gap-2.5">
-                <DeviceIcon :os="row.os" :size="30" />
+                <DeviceIcon :icon="row.settings?.icon" :os="row.os" :size="30" />
                 <div class="flex min-w-0 flex-col gap-px">
                   <span class="truncate text-[12px] font-semibold text-ink">{{
                     row.name

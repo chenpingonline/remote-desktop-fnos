@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guacamole 1.6 / FreeRDP 2.11: enforce the backend-authorized session leaf pin.
+"""Guacamole 1.6 / FreeRDP 3: enforce the backend-authorized session leaf pin.
 No shared known_hosts or CA fallback can override a mismatching session pin.
 """
 from pathlib import Path

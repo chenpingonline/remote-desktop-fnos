@@ -455,6 +455,7 @@ export async function saveConnection(p: ConnectionInput): Promise<Connection> {
         certificatePolicy: "verify",
         authMode: "password",
       }),
+      icon: p.icon ?? old?.settings?.icon ?? "auto",
       clipboard:
         p.clipboard === undefined
           ? old?.settings?.clipboard || "disabled"

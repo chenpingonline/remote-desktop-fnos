@@ -84,7 +84,6 @@ function handleCommand(command: string) {
   if (command === "probe") probe();
   if (command === "edit") emit("edit", props.connection);
   if (command === "delete") emit("delete", props.connection);
-  if (command === "favorite") emit("favorite", props.connection);
 }
 </script>
 
@@ -93,7 +92,7 @@ function handleCommand(command: string) {
     class="connection-card group relative flex min-h-[188px] flex-col rounded-2xl border border-line bg-surface p-3.5 device-card-motion shadow-card"
   >
     <div class="flex items-start gap-2.5">
-      <DeviceIcon :os="connection.os" :size="38" />
+      <DeviceIcon :icon="connection.settings?.icon" :os="connection.os" :size="38" />
       <div class="flex min-w-0 flex-1 flex-col gap-0.5 pt-0.5">
         <h3
           class="truncate text-[13.5px] font-bold tracking-[-0.015em] text-ink"
@@ -151,22 +150,6 @@ function handleCommand(command: string) {
           </button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="favorite">
-                <span class="flex items-center gap-2"
-                  ><Star :size="13" />
-                  {{ connection.favorite ? "取消收藏" : "添加收藏" }}</span
-                >
-              </el-dropdown-item>
-              <el-dropdown-item command="probe" :disabled="probing"
-                ><span>{{
-                  probing ? "检测中…" : "检查 TCP 连通性"
-                }}</span></el-dropdown-item
-              >
-              <el-dropdown-item
-                v-if="connection.protocol === 'RDP'"
-                command="certificate"
-                ><span>证书与信任</span></el-dropdown-item
-              >
               <el-dropdown-item command="edit">
                 <span class="flex items-center gap-2"
                   ><Pencil :size="13" /> 编辑连接</span
@@ -177,6 +160,16 @@ function handleCommand(command: string) {
                   ><Trash2 :size="13" /> 删除连接</span
                 >
               </el-dropdown-item>
+              <el-dropdown-item command="probe" divided :disabled="probing"
+                ><span>{{
+                  probing ? "检测中…" : "检查 TCP 连通性"
+                }}</span></el-dropdown-item
+              >
+              <el-dropdown-item
+                v-if="connection.protocol === 'RDP'"
+                command="certificate"
+                ><span>证书与信任</span></el-dropdown-item
+              >
             </el-dropdown-menu>
           </template>
         </el-dropdown>

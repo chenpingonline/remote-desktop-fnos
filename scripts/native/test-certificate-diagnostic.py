@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory() as tmp:
                 except (ssl.SSLError,OSError):conn.close()
             except OSError:return
     threading.Thread(target=serve,daemon=True).start()
-    env=dict(os.environ,LD_LIBRARY_PATH='/out/lib',OPENSSL_MODULES='/out/lib/ossl-modules')
+    env=dict(os.environ,LD_LIBRARY_PATH='/out/lib',OPENSSL_MODULES='/out/lib/ossl-modules',WLOG_LEVEL='WARN')
     bad_home=os.environ.get('RD_TEST_HOME_MODE')=='unwritable'
     for name,child in [('HOME','home'),('XDG_CONFIG_HOME','config'),('XDG_CACHE_HOME','cache'),('XDG_DATA_HOME','data')]:
         if bad_home:
@@ -52,7 +52,7 @@ with tempfile.TemporaryDirectory() as tmp:
         for _ in range(50):
             try:c=socket.create_connection(('127.0.0.1',14822),timeout=1);break
             except OSError:time.sleep(.1)
-        c.settimeout(10);reader=c.makefile('rb')
+        c.settimeout(30);reader=c.makefile('rb')
         def read():
             parts=[]
             while True:
@@ -97,6 +97,11 @@ with tempfile.TemporaryDirectory() as tmp:
             assert not any(received_auth)
             print('Missing session authorization, including legacy shared trust: rejected; status='+error[2])
         c.close()
+    except BaseException:
+        # This process uses only generated certificates and public synthetic
+        # credentials. Preserve native evidence when a protocol check fails.
+        print(b''.join(logs).decode(errors='replace'), flush=True)
+        raise
     finally:
         import signal
         os.killpg(daemon.pid,signal.SIGTERM)

@@ -104,3 +104,12 @@ export function performanceDisplay(width: number, height: number, scale = 1, mod
     dpi: Math.max(96, Math.round(size.dpi * factor)),
   };
 }
+
+// RDP desktop wallpaper is enabled unless explicitly disabled on this browser.
+export function loadWallpaper(): boolean {
+  try { return localStorage.getItem("remote-desktop.rdp-wallpaper") !== "false"; }
+  catch { return true; }
+}
+export function saveWallpaper(enabled: boolean) {
+  try { localStorage.setItem("remote-desktop.rdp-wallpaper", String(enabled)); } catch {}
+}

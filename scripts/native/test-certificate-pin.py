@@ -14,14 +14,16 @@ with tempfile.TemporaryDirectory() as tmp:
         der,fingerprint=certs[index]
         return subprocess.run(['/pin',host,'3389',fingerprint if expected is None else expected],input=der,env=env,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode
     assert pin('target.example',0,'0'*64)==5
-    assert not list(root.rglob('known_hosts2'))
+    def saved():
+        return {str(p.relative_to(root)):p.read_bytes() for p in root.rglob('server/*') if p.is_file()}
+    assert not saved()
     assert pin('other.example',1)==0
-    path=list(root.rglob('known_hosts2'))[0]
-    other=path.read_bytes()
+    other=saved()
+    assert len(other)==1
     assert pin('target.example',0)==0
-    baseline=path.read_bytes()
-    assert other in baseline and len(baseline)>len(other)
-    assert path.stat().st_mode&0o777==0o600
-    assert pin('target.example',0)==0 and path.read_bytes()==baseline
-    assert pin('target.example',1)==7 and path.read_bytes()==baseline
+    baseline=saved()
+    assert len(baseline)==2 and all(baseline[k]==v for k,v in other.items())
+    assert all(p.stat().st_mode&0o777==0o600 for p in root.rglob('server/*') if p.is_file())
+    assert pin('target.example',0)==0 and saved()==baseline
+    assert pin('target.example',1)==7 and saved()==baseline
     print('Native pin tool: wrong SHA rejected, existing entries preserved, duplicate idempotent, changed pin refused, private file permissions verified')

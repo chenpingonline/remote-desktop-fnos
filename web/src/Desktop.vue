@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { displayTransform, performanceDisplay, loadRenderMode, saveRenderMode, renderModeOptions, type RenderMode, loadDisplayScale, saveDisplayScale, resolutionOptions, loadResolutionMode, saveResolutionMode } from "./display";
+import { displayTransform, performanceDisplay, loadWallpaper, saveWallpaper, loadRenderMode, saveRenderMode, renderModeOptions, type RenderMode, loadDisplayScale, saveDisplayScale, resolutionOptions, loadResolutionMode, saveResolutionMode } from "./display";
 import AppSelect from "./components/AppSelect.vue";
 import { ref, computed, onMounted, onBeforeUnmount, watch, useId, nextTick } from "vue";
 import Guacamole from "./vendor/guacamole.js";
@@ -16,16 +16,21 @@ const props = defineProps<{
     toolbarTarget?: string;
     active?: boolean;
     renderMode?: RenderMode;
+    wallpaper?: boolean;
   }>(),
   emit = defineEmits<{ "status-change": [status: string]; close: []; reconnect: []; progress: [stage: "connecting" | "waiting" | "ready" | "failed", message?: string] }>();
+const initialWallpaper = props.wallpaper ?? loadWallpaper();
+const wallpaper = ref(initialWallpaper);
+const wallpaperPending = computed(() => props.protocol === "rdp" && wallpaper.value !== initialWallpaper);
 const initialRenderMode = props.renderMode || loadRenderMode(props.protocol);
 const renderMode = ref<string>(initialRenderMode);
 const renderModePending = computed(() => renderMode.value !== initialRenderMode);
 function changeRenderMode() { saveRenderMode(props.protocol, renderMode.value); }
 function applySettings() {
-  // Save both selections together so one reconnect applies the current panel.
+  // Save all selections together so one reconnect applies the current panel.
   saveRenderMode(props.protocol, renderMode.value);
   if (props.protocol === "rdp") saveDisplayScale(props.protocol, Number(displayScale.value));
+  if (props.protocol === "rdp") saveWallpaper(wallpaper.value);
   emit("reconnect");
 }
 const resolutionMode = ref(loadResolutionMode(props.protocol));
@@ -39,8 +44,8 @@ const initialContentScale = loadDisplayScale(props.protocol);
 const displayScale = ref(String(initialContentScale));
 const scalePending = computed(() => Number(displayScale.value) !== initialContentScale);
 const resizeInfo = ref("");
-const reconnectPending = computed(() => renderModePending.value || (props.protocol === "rdp" && scalePending.value) || resizeInfo.value.includes("未确认"));
-const pendingLabels = computed(() => [renderModePending.value ? "画质模式" : "", props.protocol === "rdp" && scalePending.value ? "内容大小" : "", resizeInfo.value.includes("未确认") ? "分辨率" : ""].filter(Boolean).join("、"));
+const reconnectPending = computed(() => wallpaperPending.value || renderModePending.value || (props.protocol === "rdp" && scalePending.value) || resizeInfo.value.includes("未确认"));
+const pendingLabels = computed(() => [wallpaperPending.value ? "桌面壁纸" : "", renderModePending.value ? "画质模式" : "", props.protocol === "rdp" && scalePending.value ? "内容大小" : "", resizeInfo.value.includes("未确认") ? "分辨率" : ""].filter(Boolean).join("、"));
 function changeDisplayScale() {
   saveDisplayScale(props.protocol, Number(displayScale.value));
 }
@@ -631,6 +636,7 @@ onBeforeUnmount(() => {
             <p class="session-performance-hint">{{ renderMode === 'clear' ? '无损画面，适合文字和代码；视频可能较慢。' : renderMode === 'smooth' ? (protocol === 'rdp' ? '优先动态画面；自动分辨率最高 1920 × 1080，固定分辨率保持所选尺寸。' : '降低图像质量与压缩负担，优先动态画面。') : '自动平衡画面清晰度和传输速度，适合日常操作。' }}</p>
           </section>
           <section class="session-settings-group"><h3>显示</h3>
+            <label v-if="protocol === 'rdp'" class="session-row">桌面壁纸<input class="session-wallpaper-switch" type="checkbox" role="switch" aria-label="桌面壁纸" v-model="wallpaper" @change="saveWallpaper(wallpaper)" /></label>
             <label class="session-row">画面适配<AppSelect v-model="zoom" @change="updateViewport" aria-label="画面缩放"
               :options="[
                 { value: 'fit', label: '适应窗口（保持比例）' }, { value: 'fill', label: '铺满窗口（拉伸）' }, { value: '1', label: '像素原始尺寸' },

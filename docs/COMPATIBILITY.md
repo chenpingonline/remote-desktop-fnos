@@ -8,7 +8,7 @@
 | 浏览器 | 本机 Chrome，Playwright 自动化；非 Computer Use 人工交互证据 |
 | Linux x86 | 构建专用 Docker 环境（不作为目标 fnOS 支持证据） |
 | guacd / JS | Apache Guacamole 1.6.0，官方源码 SHA-256 固定 |
-| FreeRDP / LibVNCClient / 其他库 | 实际构建版本见包内 dependencies.tsv；目标 ABI 与动态插件待验 |
+| FreeRDP / LibVNCClient / 其他库 | 0.1.47：FreeRDP/WinPR 3.33.1；完整版本见包内 dependencies.tsv。x86 原生证书、加密、通道及干净容器插件检查通过；目标 fnOS ABI 与真实远端连接待验 |
 | fnOS / 网关 / 安装生命周期 | fnOS 1.2.1010 x86 已通过 0.1.2 原位升级和启停回归；网关页面、WSS、最低版本及完整恢复矩阵仍待验证 |
 | Windows RDP / NLA / 证书 | 待真实设备验证；支持应用内证书检查、显式指纹信任与撤销；真实 Windows 登录待验 |
 | macOS VNC 密码 | 待实机验证；ARD 账号认证不开放 |
