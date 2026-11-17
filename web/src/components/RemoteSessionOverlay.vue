@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onBeforeUnmount, onMounted, nextTick } from "vue";
-import { X, Plus, Maximize, Minimize, ArrowLeft, Unplug, Ellipsis } from "lucide-vue-next";
+import { X, Plus, Maximize, Minimize, ArrowLeft, Unplug } from "lucide-vue-next";
 import Desktop from "../Desktop.vue";
 import CertificateDialog from "./CertificateDialog.vue";
 import BaseModal from "./BaseModal.vue";
@@ -47,16 +47,6 @@ const active = ref(""),
 const workspace = ref<HTMLElement>();
 const isFullscreen = ref(false);
 const ending = ref(false);
-const moreActions = ref<HTMLDetailsElement>();
-function closeMore(focus = false) {
-  if (!moreActions.value?.open) return;
-  moreActions.value.open = false;
-  if (focus) moreActions.value.querySelector("summary")?.focus();
-}
-function outsideMore(event: PointerEvent) {
-  if (!moreActions.value?.contains(event.target as Node)) closeMore();
-}
-watch(() => [active.value, ui.remote.open], () => closeMore());
 function sessionStatus(id: string, status: string) {
   const session = sessions.value.find(s => s.id === id);
   if (session) session.status = status;
@@ -73,7 +63,6 @@ async function toggleFullscreen() {
 }
 onMounted(() => {
   document.addEventListener("fullscreenchange", syncFullscreen);
-  document.addEventListener("pointerdown", outsideMore);
 });
 const pendingFlow = ref<Flow | null>(null);
 const visibleProgress = computed(
@@ -493,7 +482,6 @@ watch(() => ui.remote.nonce, () => {
 });
 onBeforeUnmount(() => {
   document.removeEventListener("fullscreenchange", syncFullscreen);
-  document.removeEventListener("pointerdown", outsideMore);
   alive = false;
   ui.remote.sessions = [];
   clearPending();
@@ -540,12 +528,8 @@ onBeforeUnmount(() => {
           </button>
           <span class="remote-header-divider" aria-hidden="true"/>
           <button class="remote-header-button" aria-label="返回管理" title="返回管理，保留所有已连接会话" @click="returnManage"><ArrowLeft :size="16" aria-hidden="true"/></button>
-          <details ref="moreActions" class="remote-more" @keydown.esc.stop.prevent="closeMore(true)">
-            <summary class="remote-header-button" aria-label="更多会话操作" title="更多会话操作"><Ellipsis :size="18" aria-hidden="true"/></summary>
-            <div class="remote-more-panel">
-              <button :disabled="!active || ending || !!pendingFlow" @click="closeMore(); closeSession(active)"><Unplug :size="16" aria-hidden="true"/>断开当前会话</button>
-            </div>
-          </details>
+          <button class="remote-header-button remote-disconnect" aria-label="断开当前会话" title="断开当前会话"
+            :disabled="!active || ending || !!pendingFlow" @click="closeSession(active)"><Unplug :size="16" aria-hidden="true"/></button>
         </div>
       </header>
       <div ref="host" class="native-desktop relative min-h-0 min-w-0 flex-1 overflow-hidden">

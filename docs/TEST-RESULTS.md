@@ -176,3 +176,11 @@ FPK 内 manifest 与服务程序版本 0.1.52、145 个 amd64 ELF、包 SHA-256 
 完整 `scripts/build.sh amd64` 通过：Vue 类型检查与构建、Node 单测、Go race、包目录及 145 个 amd64 ELF 校验通过。包内 manifest 和服务程序 `--version` 均为 0.2.0；SHA-256：`64c947b14841b63511aae44011bdee78739bbac371f3ccd79dab51c190def055`。产物 `dist/remote-desktop-0.2.0-x86.fpk`。
 
 应用中心上传解析、系统约束及升级信息检查通过，沿用原安装卷与数据卷，从 0.1.52 原位升级。任务终态 status=2/progress=100；实际安装版本 0.2.0，status=running、isOpen=true。启动日志确认 NLA crypto self-test PASS，0.2.0 监听应用 Socket。本轮未操作实际 Windows 重连；此前新增功能已完成本地浏览器模拟验证。
+
+## 0.2.1 会话工具栏与 NAS 升级（2026-11-18）
+
+将断开当前会话按钮直接放在顶部工具栏，删除单项更多菜单及相关监听、样式，沿用确认和关闭逻辑。本地模拟浏览器验证按钮显示和确认断开流程通过。
+
+完整 `scripts/build.sh amd64` 通过：前端类型检查/构建、19 项 Node 单测、Go race、包目录及 145 个 amd64 ELF 校验。FPK manifest 与程序版本均为 0.2.1，SHA-256 为 `98b1dfdd945264e62d73e039e4c98efbcd5f9004306410c3c7999edb470d2904`。
+
+经应用中心从 0.2.0 原位升级，保留安装卷与数据卷。升级任务 status=2/progress=100；安装版本 0.2.1，running/isOpen=true；启动日志确认 NLA crypto self-test PASS，0.2.1 监听应用 Socket。本轮未重新连接真实 Windows。产物 `dist/remote-desktop-0.2.1-x86.fpk`。

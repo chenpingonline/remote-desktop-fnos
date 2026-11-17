@@ -1293,14 +1293,6 @@
 .remote-compact .remote-header-actions { gap: 3px; }
 .native-desktop.remote-compact .integrated-tools .desktop-actions { gap: 3px; }
 .remote-compact .remote-header-divider { margin-inline: 5px; height: 16px; }
-.remote-more { position: relative; }
-.remote-more > summary { display: flex; cursor: pointer; list-style: none; }
-.remote-more > summary::-webkit-details-marker { display: none; }
-.remote-more > summary:hover, .remote-more[open] > summary { background: var(--surface-2); color: var(--text); }
-.remote-more > summary:focus-visible { outline: 2px solid var(--brand); outline-offset: -2px; }
-.remote-more-panel { position: absolute; top: calc(100% + 9px); right: 0; width: 176px; padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow-float); }
-.remote-more-panel > button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 9px 10px; border: 0; border-radius: 6px; background: transparent; color: var(--danger); font-size: 12px; text-align: left; }
-.remote-more-panel > button:hover { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 .native-desktop .session-settings-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); }
 .native-desktop .session-settings-footer p { min-width: 0; color: var(--text-2); font-size: 12px; line-height: 1.5; }
 .native-desktop .session-settings-footer > button { flex-shrink: 0; min-height: 32px; padding: 6px 12px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-ink); font-size: 12px; font-weight: 600; }
