@@ -1,5 +1,5 @@
 # Build-only container. The installed FPK runs native processes without Docker.
-FROM --platform=linux/amd64 debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+FROM debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential pkg-config ca-certificates libcairo2-dev libjpeg62-turbo-dev libpng-dev uuid-dev freerdp2-dev libvncserver-dev libssl-dev libwebp-dev libpango1.0-dev && rm -rf /var/lib/apt/lists/*
 COPY guacamole-server-1.6.0.tar.gz /tmp/source.tar.gz
 RUN echo '8bc45675da96d7b6f39728160181e3d4ff3c08f460f6d26de5805b642bf13f2b  /tmp/source.tar.gz' | sha256sum -c - && tar -xzf /tmp/source.tar.gz -C /tmp
@@ -19,7 +19,7 @@ RUN mkdir -p /out/bin /out/lib /out/licenses && cp /opt/remote-desktop/sbin/guac
  for copyright in /usr/share/doc/*/copyright; do package=$(basename "$(dirname "$copyright")"); install -D -m 0644 "$copyright" "/out/licenses/debian-copyrights/$package/copyright"; done && \
  cp -aL /usr/share/common-licenses/. /out/licenses/common-licenses/ && cp -aL /etc/ssl/certs /out/ca-certificates
 COPY check-crypto.c /tmp/check-crypto.c
-RUN mkdir -p /out/lib/ossl-modules && cp -L /usr/lib/x86_64-linux-gnu/ossl-modules/legacy.so /out/lib/ossl-modules/ && \
+RUN mkdir -p /out/lib/ossl-modules && cp -L /usr/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH)/ossl-modules/legacy.so /out/lib/ossl-modules/ && \
  cc /tmp/check-crypto.c $(pkg-config --cflags --libs winpr2) -o /out/bin/nla-crypto-check && \
  LD_LIBRARY_PATH=/out/lib OPENSSL_MODULES=/out/lib/ossl-modules /out/bin/nla-crypto-check
 COPY test-vnc-password-auth.py /tmp/test-vnc-password-auth.py
