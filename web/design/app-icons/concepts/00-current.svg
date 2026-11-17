@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="现有图标：Relay 环形箭头">
+  <rect width="512" height="512" rx="128" fill="#D7FB62"/>
+  <path d="M128 200h192a80 80 0 0 1 0 160h-104" fill="none" stroke="#182006" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m208 128-72 72 72 72" fill="none" stroke="#182006" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

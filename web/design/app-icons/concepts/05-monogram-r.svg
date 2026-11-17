@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="远程桌面图标：字母 R 标志">
+  <defs>
+    <linearGradient id="mono-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E4FF7E"/>
+      <stop offset="1" stop-color="#C7ED4A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#mono-tile)"/>
+  <g fill="none" stroke="#182006" stroke-width="52" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M170 380V150q0-22 22-22h74a68 68 0 0 1 0 136h-74"/>
+    <path d="M246 264l94 116"/>
+  </g>
+</svg>

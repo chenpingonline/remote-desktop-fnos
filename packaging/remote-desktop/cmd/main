@@ -1,0 +1,72 @@
+#!/bin/bash
+set -eu
+umask 077
+: "${TRIM_APPDEST:?}" "${TRIM_PKGVAR:?}" "${TRIM_PKGETC:?}"
+binary=$(readlink -f "$TRIM_APPDEST/bin/remote-desktop")
+pidfile="$TRIM_PKGVAR/server.pid"
+socket="$TRIM_APPDEST/app.sock"
+mkdir -p "$TRIM_PKGVAR" "$TRIM_PKGETC"
+error() {
+ printf '%s\n' "$1" >> "$TRIM_PKGVAR/lifecycle.log"
+ if [ -n "${TRIM_TEMP_LOGFILE:-}" ] && [ "$TRIM_TEMP_LOGFILE" != "$TRIM_PKGVAR/lifecycle.log" ]; then
+  printf '%s\n' "$1" >> "$TRIM_TEMP_LOGFILE"
+ fi
+}
+owned() {
+ [ -r "$pidfile" ] || return 1
+ read -r pid stamp < "$pidfile" || return 1
+ case "$pid" in ''|*[!0-9]*) return 1;; esac
+ [ "$(readlink "/proc/$pid/exe" 2>/dev/null)" = "$binary" ] || return 1
+ [ "$(awk '{print $22}' "/proc/$pid/stat" 2>/dev/null)" = "$stamp" ] || return 1
+ kill -0 "$pid" 2>/dev/null
+}
+status() { owned && "$binary" --healthcheck "$socket" >/dev/null 2>&1; }
+stop() {
+ if owned; then
+  kill -TERM "$pid"
+  for ((i=0;i<12;i++)); do owned || break; sleep 1; done
+  if owned; then error '服务未能按时退出；保留进程及状态，请检查诊断后重试停止。'; return 1; fi
+ fi
+ rm -f "$pidfile"
+}
+start() {
+ if status; then return 0; fi
+ if owned; then error '服务进程存在但健康检查失败，请先停止应用。'; return 1; fi
+ # Only remove a socket after confirming no owned application remains and no listener responds.
+ if [ -e "$socket" ]; then
+  [ -S "$socket" ] || { error 'Socket 路径被其他文件占用。'; return 1; }
+  probe_result=0
+  "$binary" --probe-socket "$socket" >/dev/null 2>&1 || probe_result=$?
+  case "$probe_result" in
+   0) error 'Socket 已有监听服务，拒绝替换。'; return 1;;
+   3) ;;
+   *) error '无法确认 Socket 是否失效，请检查目录及网关组权限。'; return 1;;
+  esac
+  rm -f "$socket"
+ fi
+ if ! env LD_LIBRARY_PATH="$TRIM_APPDEST/lib" OPENSSL_MODULES="$TRIM_APPDEST/lib/ossl-modules" "$TRIM_APPDEST/bin/nla-crypto-check" >> "$TRIM_PKGVAR/server.log" 2>&1; then
+  error 'RDP 认证组件自检失败，请检查完整安装包与 server.log。'
+  return 1
+ fi
+ "$binary" --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --web "$TRIM_APPDEST/web" --socket "$socket" --guacd 127.0.0.1:14822 --engine "$TRIM_APPDEST/bin/guacd" </dev/null >> "$TRIM_PKGVAR/server.log" 2>&1 9>&- &
+ pid=$!
+ stamp=$(awk '{print $22}' "/proc/$pid/stat")
+ printf '%s %s\n' "$pid" "$stamp" > "$pidfile"
+ for ((i=0;i<15;i++)); do if status; then return 0; fi; kill -0 "$pid" 2>/dev/null || break; sleep 1; done
+ error '启动未通过健康检查，请检查网关组权限、14822 端口与 server.log。'
+ if [ -r "$TRIM_PKGVAR/server.log" ]; then error "$(tail -n 5 "$TRIM_PKGVAR/server.log")"; fi
+ stop || true
+ return 1
+}
+# Serialize lifecycle operations. The backend also locks its private data directory.
+exec 9>"$TRIM_PKGVAR/lifecycle.lock"
+if ! flock -w 2 9; then
+ # Compatibility with 0.1.1: terminate only this exact, verified service
+ # when stopping, and only if it still holds the inherited lifecycle FD.
+ if [ "${1:-}" = stop ] && owned && [ "$(readlink "/proc/$pid/fd/9" 2>/dev/null || true)" = "$(readlink -f "$TRIM_PKGVAR/lifecycle.lock")" ]; then
+  printf '%s\n' '检测到旧版服务继承了生命周期锁，正在停止已核实的本应用进程。' >> "$TRIM_PKGVAR/lifecycle.log"
+  kill -TERM "$pid"
+ fi
+ flock -w 18 9 || { error '另一个应用启停操作仍在进行，请稍后重试。'; exit 1; }
+fi
+case "${1:-}" in start) start;; stop) stop;; status) if status; then exit 0; else exit 3; fi;; *) exit 1;; esac

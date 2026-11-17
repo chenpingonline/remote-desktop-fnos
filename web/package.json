@@ -1,0 +1,29 @@
+{
+  "name": "relay-remote-desktop",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "element-plus": "^2.14.8",
+    "lucide-vue-next": "^0.577.0",
+    "vue": "^3.5.45",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.10",
+    "autoprefixer": "^10.6.2",
+    "postcss": "^8.5.32",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.8",
+    "vue-tsc": "^3.3.14",
+    "@playwright/test": "^1.56.1"
+  }
+}

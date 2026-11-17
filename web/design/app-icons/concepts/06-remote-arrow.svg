@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="远程桌面图标：屏幕与向外箭头">
+  <defs>
+    <linearGradient id="remote-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A231B"/>
+      <stop offset="1" stop-color="#090D0A"/>
+    </linearGradient>
+    <linearGradient id="remote-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="512">
+      <stop offset="0" stop-color="#E3FF78"/>
+      <stop offset="1" stop-color="#C8EF4C"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#remote-tile)"/>
+  <g fill="none" stroke="url(#remote-glyph)" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="64" y="200" width="336" height="176" rx="28" stroke-width="26"/>
+    <path d="M232 376v34" stroke-width="24"/>
+    <path d="M168 424h128" stroke-width="24"/>
+    <path d="M176 320 340 156" stroke-width="30"/>
+    <path d="M392 104 369 172 324 127Z" fill="url(#remote-glyph)" stroke="none"/>
+  </g>
+</svg>

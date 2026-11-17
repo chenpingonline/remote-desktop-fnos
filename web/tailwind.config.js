@@ -1,0 +1,67 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        canvas: 'var(--bg)',
+        surface: 'var(--surface)',
+        soft: 'var(--surface-2)',
+        inset: 'var(--surface-3)',
+        ink: 'var(--text)',
+        muted: 'var(--text-2)',
+        faint: 'var(--text-3)',
+        line: 'var(--border)',
+        'line-strong': 'var(--border-strong)',
+        accent: 'var(--accent)',
+        'accent-strong': 'var(--accent-strong)',
+        'accent-ink': 'var(--accent-ink)',
+        brand: 'var(--brand)',
+        danger: 'var(--danger)',
+        'danger-soft': 'var(--danger-soft)',
+        success: 'var(--success)',
+        'success-soft': 'var(--success-soft)',
+        warning: 'var(--warning)',
+        'warning-soft': 'var(--warning-soft)',
+        info: 'var(--info)',
+        'info-soft': 'var(--info-soft)',
+        sidebar: {
+          DEFAULT: 'var(--sidebar)',
+          soft: 'var(--sidebar-soft)',
+          line: 'var(--sidebar-line)',
+          text: 'var(--sidebar-text)',
+          muted: 'var(--sidebar-muted)',
+          faint: 'var(--sidebar-faint)',
+          hover: 'var(--sidebar-hover)',
+          active: 'var(--sidebar-active)',
+          icon: 'var(--sidebar-icon-active)',
+        },
+      },
+      fontFamily: {
+        sans: [
+          'Manrope Variable',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'sans-serif',
+        ],
+        mono: ['SFMono-Regular', 'Cascadia Code', 'Roboto Mono', 'Menlo', 'monospace'],
+      },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        float: 'var(--shadow-float)',
+        soft: 'var(--shadow-soft)',
+      },
+      borderRadius: {
+        '4xl': '28px',
+      },
+      screens: {
+        nav: '980px',
+      },
+    },
+  },
+  plugins: [],
+}

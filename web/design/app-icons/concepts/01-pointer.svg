@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="远程桌面图标：屏幕与指针">
+  <defs>
+    <linearGradient id="cursor-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1A231B"/>
+      <stop offset="1" stop-color="#090D0A"/>
+    </linearGradient>
+    <linearGradient id="cursor-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="512">
+      <stop offset="0" stop-color="#E3FF78"/>
+      <stop offset="1" stop-color="#C8EF4C"/>
+    </linearGradient>
+    <mask id="cursor-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="#000"/>
+      <g fill="#fff">
+        <rect x="88" y="112" width="336" height="224" rx="34"/>
+        <rect x="240" y="336" width="32" height="48"/>
+        <rect x="180" y="384" width="152" height="28" rx="14"/>
+      </g>
+      <path fill="#000" d="M208 162V279L239 248 256 286 277 276 260 238H304Z"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#cursor-tile)"/>
+  <rect width="512" height="512" rx="116" fill="url(#cursor-glyph)" mask="url(#cursor-mask)"/>
+</svg>

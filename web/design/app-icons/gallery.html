@@ -1,0 +1,747 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Relay 远程桌面 · 应用图标方案</title>
+    <style>
+      :root,
+      html[data-theme='dark'] {
+        --bg: #0a0e0b;
+        --surface: #121713;
+        --soft: #181f19;
+        --ink: #eef1e9;
+        --muted: #a2aba0;
+        --faint: #8a9489;
+        --line: #263028;
+        --line-soft: rgba(255, 255, 255, 0.06);
+        --lime: #d7fb62;
+        --lime-soft: rgba(215, 251, 98, 0.12);
+        --accent-ink: #182006;
+        --green: #1f6f4a;
+        --shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+        color-scheme: dark;
+      }
+      html[data-theme='light'] {
+        --bg: #f4f5f6;
+        --surface: #ffffff;
+        --soft: #f7f8f9;
+        --ink: #17191c;
+        --muted: #4d5359;
+        --faint: #6a7279;
+        --line: #e3e6ea;
+        --line-soft: rgba(20, 32, 20, 0.06);
+        --lime: #c2eb43;
+        --lime-soft: rgba(194, 235, 67, 0.16);
+        --accent-ink: #182006;
+        --green: #1f6f4a;
+        --shadow: 0 18px 44px rgba(20, 30, 20, 0.1);
+        color-scheme: light;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+          'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+        transition: background-color 0.25s ease, color 0.25s ease;
+      }
+      a {
+        color: inherit;
+      }
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px clamp(20px, 4vw, 56px);
+        background: color-mix(in srgb, var(--bg) 86%, transparent);
+        backdrop-filter: blur(14px);
+        border-bottom: 1px solid var(--line);
+      }
+      .topbar img {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+      }
+      .topbar strong {
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+      .topbar .spacer {
+        flex: 1;
+      }
+      .theme-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--muted);
+        font: inherit;
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .theme-toggle:hover {
+        border-color: var(--faint);
+        color: var(--ink);
+      }
+      main {
+        width: min(1440px, 100%);
+        margin: 0 auto;
+        padding: 0 clamp(20px, 4vw, 56px) 96px;
+      }
+      .hero {
+        padding: clamp(48px, 8vw, 96px) 0 44px;
+        max-width: 880px;
+      }
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        padding: 5px 12px;
+        border-radius: 999px;
+        background: var(--lime-soft);
+        color: var(--lime);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      html[data-theme='light'] .eyebrow {
+        color: var(--green);
+      }
+      .hero h1 {
+        margin: 0 0 18px;
+        font-size: clamp(34px, 5vw, 54px);
+        line-height: 1.1;
+        letter-spacing: -0.02em;
+      }
+      .hero h1 em {
+        font-style: normal;
+        color: var(--lime);
+      }
+      html[data-theme='light'] .hero h1 em {
+        color: var(--accent-ink);
+        background: linear-gradient(transparent 62%, var(--lime) 62%);
+        padding: 0 4px;
+      }
+      .hero p {
+        margin: 0;
+        max-width: 720px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+      .hero-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px 18px;
+        margin-top: 26px;
+        color: var(--faint);
+        font-size: 13px;
+      }
+      .chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 22px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px 6px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: var(--surface);
+        color: var(--muted);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+      .swatch {
+        width: 16px;
+        height: 16px;
+        border-radius: 5px;
+        border: 1px solid var(--line-soft);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+      @media (max-width: 1100px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 720px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+      .card-icon {
+        position: relative;
+        display: grid;
+        place-items: center;
+        padding: 30px;
+        background:
+          radial-gradient(120% 90% at 50% 0%, var(--lime-soft), transparent 62%),
+          var(--soft);
+        border-bottom: 1px solid var(--line);
+      }
+      .card-icon img {
+        width: 168px;
+        height: 168px;
+        filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.28));
+      }
+      .badge {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--lime);
+        color: var(--accent-ink);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+      .badge.quiet {
+        background: var(--soft);
+        color: var(--muted);
+        border: 1px solid var(--line);
+      }
+      .card-body {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        gap: 10px;
+        padding: 20px 22px 22px;
+      }
+      .card-head {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .card-head h2 {
+        margin: 0;
+        font-size: 21px;
+        letter-spacing: -0.01em;
+      }
+      .card-head .en {
+        color: var(--faint);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+      .tagline {
+        margin: 0;
+        color: var(--lime);
+        font-size: 13px;
+        font-weight: 600;
+      }
+      html[data-theme='light'] .tagline {
+        color: var(--green);
+      }
+      .desc {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+      .scale {
+        display: flex;
+        align-items: flex-end;
+        gap: 16px;
+        margin-top: auto;
+        padding-top: 16px;
+        border-top: 1px dashed var(--line);
+      }
+      .scale figure {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+      }
+      .scale figcaption {
+        color: var(--faint);
+        font-size: 10px;
+        letter-spacing: 0.04em;
+      }
+      .scale .pad {
+        display: grid;
+        place-items: center;
+        border-radius: 10px;
+        background: var(--soft);
+        border: 1px solid var(--line-soft);
+      }
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .links a {
+        padding: 6px 11px;
+        border-radius: 9px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+        text-decoration: none;
+        transition: border-color 0.2s ease, color 0.2s ease;
+      }
+      .links a:hover {
+        border-color: var(--lime);
+        color: var(--ink);
+      }
+      .section {
+        margin-top: 84px;
+      }
+      .section-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 24px;
+      }
+      .section-head h2 {
+        margin: 0;
+        font-size: 24px;
+        letter-spacing: -0.01em;
+      }
+      .section-head p {
+        margin: 0;
+        color: var(--faint);
+        font-size: 13px;
+      }
+      .specs {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .spec {
+        padding: 20px 22px;
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        background: var(--surface);
+      }
+      .spec h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        letter-spacing: 0.02em;
+      }
+      .spec p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .spec .big {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--lime);
+        font-size: 22px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      html[data-theme='light'] .spec .big {
+        color: var(--green);
+      }
+      .palette {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      .palette code {
+        padding: 4px 8px;
+        border-radius: 7px;
+        background: var(--soft);
+        color: var(--muted);
+        font-size: 11.5px;
+      }
+      .pick {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 20px;
+      }
+      @media (max-width: 860px) {
+        .pick {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        padding: 24px 26px;
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        background: var(--surface);
+      }
+      .panel h3 {
+        margin: 0 0 14px;
+        font-size: 16px;
+      }
+      .panel ol,
+      .panel ul {
+        margin: 0;
+        padding-left: 20px;
+        color: var(--muted);
+        font-size: 13.5px;
+      }
+      .panel li + li {
+        margin-top: 8px;
+      }
+      .panel li strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      pre {
+        margin: 12px 0 0;
+        padding: 16px 18px;
+        overflow-x: auto;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--soft);
+        color: var(--ink);
+        font-size: 12.5px;
+        line-height: 1.7;
+      }
+      .note {
+        margin-top: 18px;
+        color: var(--faint);
+        font-size: 12.5px;
+      }
+      .current {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-top: 18px;
+        padding: 14px 16px;
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        color: var(--faint);
+        font-size: 12.5px;
+      }
+      .current img {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+      }
+      footer {
+        margin-top: 88px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+        color: var(--faint);
+        font-size: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 24px;
+        justify-content: space-between;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="topbar">
+      <img src="concepts/01-pointer.svg" alt="" />
+      <strong>Relay · 远程桌面</strong>
+      <span class="spacer"></span>
+      <button class="theme-toggle" type="button" id="themeToggle" aria-label="切换深浅色预览">
+        <span aria-hidden="true">◐</span><span id="themeLabel">深色</span>
+      </button>
+    </header>
+
+    <main>
+      <section class="hero">
+        <span class="eyebrow">App Icon Studies</span>
+        <h1>远程桌面<br /><em>六套图标方向</em></h1>
+        <p>
+          面向 fnOS「远程桌面」应用：512 网格、统一圆角与描边，沿用产品现有的青柠绿
+          <code>#D7FB62</code> 与墨绿 <code>#182006</code>。六套方案分别强化「控制」「串流」「双向会话」「另一端」「品牌」与「经典语义」，
+          都可以直接替换图标文件。
+        </p>
+        <div class="hero-meta">
+          <span>512 × 512 网格</span>
+          <span>圆角 116（22.7%）</span>
+          <span>描边 24–30</span>
+          <span>1024 主稿 + 7 档导出</span>
+        </div>
+        <div class="chips">
+          <span class="chip"><span class="swatch" style="background:#d7fb62"></span>荧光青柠 #D7FB62</span>
+          <span class="chip"><span class="swatch" style="background:#c8ef4c"></span>高光黄绿 #C8EF4C</span>
+          <span class="chip"><span class="swatch" style="background:#182006"></span>墨绿 #182006</span>
+          <span class="chip"><span class="swatch" style="background:#1f6f4a"></span>品牌绿 #1F6F4A</span>
+          <span class="chip"><span class="swatch" style="background:#0a0e0b"></span>夜底 #0A0E0B</span>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="六个图标方案">
+        <article class="card">
+          <div class="card-icon">
+            <span class="badge">主推</span>
+            <img src="concepts/01-pointer.svg" alt="指针屏图标：深色圆角底板，青柠绿显示器内有一枚光标" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>指针屏</h2><span class="en">Pointer</span></div>
+            <p class="tagline">屏幕 + 光标，接管远端</p>
+            <p class="desc">光标直接表达「在这块屏幕上操作另一台电脑」。形状最简洁，深底青柠绿在应用列表里最跳，32px 仍能读成屏幕与指针。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/01-pointer/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/01-pointer/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/01-pointer/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/01-pointer.svg">SVG 源文件</a>
+              <a href="exports/01-pointer/icon-512.png">512 PNG</a>
+              <a href="exports/01-pointer/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">
+            <span class="badge quiet">备选</span>
+            <img src="concepts/02-signal.svg" alt="信号屏图标：青柠绿底板，墨绿显示器右上角发出三道信号弧" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>信号屏</h2><span class="en">Signal</span></div>
+            <p class="tagline">屏幕 + 信号弧，远程串流</p>
+            <p class="desc">信号弧让「远程 / 串流」一眼成立，认知成本最低；青柠绿满底在浅色系统里也有清晰边界。歧义是容易被读成 Wi-Fi 或投屏。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/02-signal/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/02-signal/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/02-signal/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/02-signal.svg">SVG 源文件</a>
+              <a href="exports/02-signal/icon-512.png">512 PNG</a>
+              <a href="exports/02-signal/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">
+            <img src="concepts/03-swap.svg" alt="双向屏图标：深色底板，青柠绿显示器内有一对左右箭头" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>双向屏</h2><span class="en">Swap</span></div>
+            <p class="tagline">屏幕 + 双向箭头，双向会话</p>
+            <p class="desc">一对反向箭头强调实时交互与会话，显示器轮廓带底座，桌面感强。元素偏多，16px 时箭头会糊在一起。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/03-swap/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/03-swap/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/03-swap/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/03-swap.svg">SVG 源文件</a>
+              <a href="exports/03-swap/icon-512.png">512 PNG</a>
+              <a href="exports/03-swap/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">
+            <img src="concepts/04-dual-screen.svg" alt="双屏图标：深色底板，两块青柠绿屏幕叠加，前面的屏幕里有光标" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>双屏</h2><span class="en">Dual</span></div>
+            <p class="tagline">双屏 + 光标，控制另一端</p>
+            <p class="desc">两块屏幕叠加，最接近「控制另一台设备」的字面语义，和同类远程桌面产品的用户心智一致。双屏结构在小尺寸下稍复杂。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/04-dual-screen/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/04-dual-screen/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/04-dual-screen/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/04-dual-screen.svg">SVG 源文件</a>
+              <a href="exports/04-dual-screen/icon-512.png">512 PNG</a>
+              <a href="exports/04-dual-screen/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">
+            <span class="badge">品牌向</span>
+            <img src="concepts/05-monogram-r.svg" alt="R 标图标：青柠绿底板，墨绿几何字母 R" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>R 标</h2><span class="en">Monogram</span></div>
+            <p class="tagline">Relay 首字母，品牌向</p>
+            <p class="desc">最克制、最像品牌标志；在应用列表里主要靠颜色被记住。但没有「远程桌面」的功能语义，首次安装要靠应用名称补足。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/05-monogram-r/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/05-monogram-r/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/05-monogram-r/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/05-monogram-r.svg">SVG 源文件</a>
+              <a href="exports/05-monogram-r/icon-512.png">512 PNG</a>
+              <a href="exports/05-monogram-r/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-icon">
+            <span class="badge quiet">稳健</span>
+            <img src="concepts/06-remote-arrow.svg" alt="外联图标：深色底板，青柠绿显示器与向外斜上的箭头" />
+          </div>
+          <div class="card-body">
+            <div class="card-head"><h2>外联</h2><span class="en">Remote</span></div>
+            <p class="tagline">屏幕 + 外箭头，经典语义</p>
+            <p class="desc">远程桌面的经典构图，几乎不需要解释，也最保守。箭头带有「打开外链 / 新窗口」的歧义，在 16px 时头部细节会丢失。</p>
+            <div class="scale">
+              <figure><span class="pad"><img src="exports/06-remote-arrow/icon-64.png" width="64" height="64" alt="" /></span><figcaption>64</figcaption></figure>
+              <figure><span class="pad"><img src="exports/06-remote-arrow/icon-32.png" width="32" height="32" alt="" /></span><figcaption>32</figcaption></figure>
+              <figure><span class="pad"><img src="exports/06-remote-arrow/icon-16.png" width="16" height="16" alt="" /></span><figcaption>16</figcaption></figure>
+            </div>
+            <div class="links">
+              <a href="concepts/06-remote-arrow.svg">SVG 源文件</a>
+              <a href="exports/06-remote-arrow/icon-512.png">512 PNG</a>
+              <a href="exports/06-remote-arrow/fnos/">fnOS 图标</a>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="section" aria-labelledby="specTitle">
+        <div class="section-head">
+          <h2 id="specTitle">统一规格</h2>
+          <p>所有方案共享同一套网格、圆角与色板</p>
+        </div>
+        <div class="specs">
+          <div class="spec">
+            <span class="big">512</span>
+            <h3>画布</h3>
+            <p>512×512 设计网格，导出 1024 主稿；图形按 2 的幂下采样到 512 / 256 / 128 / 64 / 32 / 16。</p>
+          </div>
+          <div class="spec">
+            <span class="big">116</span>
+            <h3>圆角</h3>
+            <p>圆角半径 116（22.7%），接近 iOS / macOS squircle 比例；底座满版，系统加遮罩时也不会露边。</p>
+          </div>
+          <div class="spec">
+            <span class="big">24–30</span>
+            <h3>描边</h3>
+            <p>主描边 24–30（画布的 5%–6%），是 16px 下仍可见的下限；不写文字、不用 20 以下的细线。</p>
+          </div>
+          <div class="spec">
+            <span class="big">≥ 64</span>
+            <h3>安全区</h3>
+            <p>图形距边缘不小于 64，避免系统圆角裁切；小尺寸下保留 1–2 个主形状，删掉次要细节。</p>
+          </div>
+        </div>
+        <div class="palette">
+          <code>底板渐变 #18211A → #090D0A</code>
+          <code>青柠绿 #D7FB62 → #C8EF4C</code>
+          <code>墨绿 #182006</code>
+          <code>品牌绿 #1F6F4A → #145137</code>
+          <code>浅色系统底 #F4F5F2</code>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="pickTitle">
+        <div class="section-head">
+          <h2 id="pickTitle">建议与接入</h2>
+          <p>先选方向，再替换文件；不要一次覆盖全部尺寸</p>
+        </div>
+        <div class="pick">
+          <div class="panel">
+            <h3>推荐顺序</h3>
+            <ol>
+              <li><strong>01 指针屏（主推）</strong>：语义、识别度与品牌色最平衡，和产品内的 Lucide 线性图标也能呼应。</li>
+              <li><strong>06 外联（稳健）</strong>：如果希望零解释成本，选这个经典构图；建议同时补一版 16px 简化稿。</li>
+              <li><strong>05 R 标（品牌）</strong>：适合作为长期品牌标志，或和 01 组合成「标志 + 功能图形」的两层体系。</li>
+              <li><strong>02 / 03 / 04</strong>：分别适合强调串流、双向会话、控制另一端的场景，可作为运营图或启动页图形。</li>
+            </ol>
+            <div class="current">
+              <img src="concepts/00-current.svg" alt="当前线上图标：青柠绿底和环形箭头" />
+              <span>对照：当前 <code>web/public/favicon.svg</code> 是青柠绿底 + 环形箭头，偏「刷新 / 重连」语义。以上方案保持同一品牌色，但补上「屏幕」这一层。</span>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>以主推「指针屏」为例</h3>
+            <pre><code># 在仓库根目录执行；先确认已选中方案
+cp web/design/app-icons/exports/01-pointer/fnos/icon_256.png \
+   packaging/remote-desktop/app/ui/images/icon_256.png
+cp web/design/app-icons/exports/01-pointer/fnos/icon_64.png \
+   packaging/remote-desktop/app/ui/images/icon_64.png
+cp web/design/app-icons/exports/01-pointer/fnos/ICON.PNG \
+   packaging/remote-desktop/ICON.PNG
+cp web/design/app-icons/concepts/01-pointer.svg \
+   web/public/favicon.svg</code></pre>
+            <p class="note">
+              <code>ICON.PNG</code> 是 64px 的包图标；替换后需要重新打 FPK，并在 fnOS 应用中心实测圆角裁切与显示尺寸。
+              网页 favicon 建议在 16 / 32 浏览器标签下复查；如果 16px 细节丢失，可以只保留「屏幕 + 光标」两个形状。
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="buildTitle">
+        <div class="section-head">
+          <h2 id="buildTitle">重新生成</h2>
+          <p>SVG 是真源；PNG 和预览图都可重建</p>
+        </div>
+        <div class="panel">
+          <pre><code>cd web
+node design/app-icons/render.mjs        # SVG → build/master/*.png（1024，透明底）
+python3 design/app-icons/build_assets.py # 导出 7 档 PNG、fnOS 图标、接触表</code></pre>
+          <p class="note">
+            依赖：Node + Playwright Chromium（渲染 SVG）、Python 3 + Pillow（缩放与拼版）。
+            全部源文件、导出图和预览见 <code>web/design/app-icons/</code>。
+          </p>
+        </div>
+      </section>
+
+      <footer>
+        <span>Relay · 远程桌面 · 应用图标方案 · 2026-11</span>
+        <span>6 个方向 · 512 网格 · 品牌青柠绿 #D7FB62</span>
+      </footer>
+    </main>
+
+    <script>
+      const root = document.documentElement;
+      const toggle = document.getElementById('themeToggle');
+      const label = document.getElementById('themeLabel');
+      const sync = () => {
+        label.textContent = root.dataset.theme === 'dark' ? '深色' : '浅色';
+      };
+      toggle.addEventListener('click', () => {
+        root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+        sync();
+      });
+      sync();
+    </script>
+  </body>
+</html>

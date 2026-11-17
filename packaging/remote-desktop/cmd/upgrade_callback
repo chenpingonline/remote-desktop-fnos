@@ -1,0 +1,3 @@
+#!/bin/bash
+# Native desktop entry type is supplied by the installed package.
+exit 0

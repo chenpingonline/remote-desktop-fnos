@@ -1,0 +1,12 @@
+#!/bin/bash
+set -eu
+"$(dirname "$0")/main" stop
+backup="${TRIM_PKGVAR:?}/backups/$(date -u +%Y%m%dT%H%M%SZ)"
+mkdir -p "$TRIM_PKGVAR/backups"
+if [ -f "$TRIM_PKGVAR/app.db" ]; then
+ "${TRIM_APPDEST:?}/bin/remote-desktop" --data "$TRIM_PKGVAR" --key "${TRIM_PKGETC:?}/master.key" --backup "$backup"
+ # Keep legacy operator files only as rollback material; startup ignores them.
+ for legacy in public-origin gateway-gid; do
+  if [ -f "$TRIM_PKGETC/$legacy" ]; then cp "$TRIM_PKGETC/$legacy" "$backup/"; fi
+ done
+fi

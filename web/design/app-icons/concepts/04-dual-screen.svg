@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="远程桌面图标：两块屏幕与指针">
+  <defs>
+    <linearGradient id="dual-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#18211A"/>
+      <stop offset="1" stop-color="#090D0A"/>
+    </linearGradient>
+    <linearGradient id="dual-glyph" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="512">
+      <stop offset="0" stop-color="#E3FF78"/>
+      <stop offset="1" stop-color="#C8EF4C"/>
+    </linearGradient>
+    <mask id="dual-back-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="#fff"/>
+      <rect x="72" y="224" width="216" height="168" rx="40" fill="#000"/>
+    </mask>
+    <mask id="dual-front-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <rect width="512" height="512" fill="#000"/>
+      <rect x="80" y="232" width="200" height="152" rx="32" fill="#fff"/>
+      <path fill="#000" d="M150 268V342L170 322 180 346 193 340 183 316H211Z"/>
+    </mask>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#dual-tile)"/>
+  <g mask="url(#dual-back-mask)" fill="none" stroke="url(#dual-glyph)">
+    <rect x="232" y="120" width="200" height="152" rx="32" stroke-width="24"/>
+  </g>
+  <rect width="512" height="512" rx="116" fill="url(#dual-glyph)" mask="url(#dual-front-mask)"/>
+</svg>
