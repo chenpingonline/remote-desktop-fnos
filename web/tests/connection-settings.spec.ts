@@ -35,3 +35,21 @@ test('RDP wallpaper defaults on and changes are applied on reconnect', async ({ 
   await page.getByRole('button', { name: '重新连接并应用', exact: true }).click();
   await expect.poll(() => page.evaluate(() => (window as any).__createdSessions.at(-1)?.wallpaper)).toBe(true);
 });
+
+test('clipboard changes are saved per connection and applied on reconnect', async ({ page }) => {
+  await page.goto(preview + '?workspace&rdp&files');
+  const settings = page.getByRole('button', { name: '会话设置', exact: true });
+  await settings.click();
+  const files = page.getByRole('switch', { name: '跨会话文件剪贴板' });
+  await expect(files).toBeChecked();
+  await files.uncheck();
+  await page.getByRole('button', { name: '重新连接并应用' }).click();
+  await expect.poll(() => page.evaluate(() => (window as any).__createdSessions.length)).toBe(2);
+  await settings.click();
+  await expect(files).not.toBeChecked();
+  await expect(page.getByRole('switch', { name: '文本剪贴板' })).toBeChecked();
+  await page.goto(preview + '?workspace');
+  await settings.click();
+  await expect(files).toHaveCount(0);
+  await expect(page.getByRole('switch', { name: '文本剪贴板' })).toBeVisible();
+});

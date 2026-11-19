@@ -152,3 +152,32 @@ func TestSessionWallpaperNegotiation(t *testing.T) {
 		})
 	}
 }
+
+func TestSessionUsesSavedWallpaperAndAllowsOverride(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		a := testApp(t)
+		id := fixture(t, a)
+		var c Connection
+		if err := a.get("connections", id, "alice", &c); err != nil {
+			t.Fatal(err)
+		}
+		c.Settings.Wallpaper = &enabled
+		response := call(a, "alice", "PATCH", "/connections/"+id, c)
+		if response.Code != 200 {
+			t.Fatal(response.Code, response.Body.String())
+		}
+		for _, override := range []bool{false, true} {
+			body := map[string]any{"connectionId": id, "display": Display{800, 600, 96}, "certificateCheck": certificateToken(t, a, id, "alice")}
+			want := enabled
+			if override {
+				want = !enabled
+				body["wallpaper"] = want
+			}
+			result := object(t, call(a, "alice", "POST", "/sessions", body))
+			session := a.sessions[result["id"].(string)]
+			if session.Wallpaper == nil || *session.Wallpaper != want {
+				t.Fatal("saved wallpaper or explicit override ignored")
+			}
+		}
+	}
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Command, Monitor, Terminal, Laptop, Server, HardDrive, Cpu, Boxes } from 'lucide-vue-next'
+import { Monitor, Laptop, Server, HardDrive, MonitorCog, PanelsTopLeft } from 'lucide-vue-next'
 
 const props = defineProps<{
   icon?: string
@@ -8,10 +8,19 @@ const props = defineProps<{
   size?: number
 }>()
 
+const hardwareIcons = {
+  desktop: Monitor,
+  laptop: Laptop,
+  server: Server,
+  nas: HardDrive,
+  workstation: MonitorCog,
+  virtual: PanelsTopLeft,
+}
+
 const variant = computed(() => {
   if (['windows', 'mac', 'linux', 'desktop', 'laptop', 'server', 'nas', 'workstation', 'virtual'].includes(props.icon || '')) return props.icon!
   const value = (props.os || '').toLowerCase()
-  if (value.includes('mac') || value.includes('ios')) return 'mac'
+  if (value.includes('darwin') || value.includes('mac') || value.includes('ios')) return 'mac'
   if (value.includes('win')) return 'windows'
   if (value.includes('linux')) return 'linux'
   return 'unknown'
@@ -34,16 +43,31 @@ const style = computed(() => {
     borderColor: `color-mix(in srgb, ${tint.value.base} 16%, transparent)`,
   }
 })
+const hardwareIcon = computed(() => hardwareIcons[variant.value as keyof typeof hardwareIcons] ?? Monitor)
+const glyphSize = computed(() => Math.round((props.size || 44) * 0.62))
 </script>
 
 <template>
-  <span class="grid flex-none place-items-center border" :style="style">
-    <svg v-if="variant === 'windows'" viewBox="0 0 24 24" fill="currentColor" class="block" :style="{ width: `${(size || 44) * 0.46}px`, height: `${(size || 44) * 0.46}px` }" aria-hidden="true">
-      <path d="M3 5.6 10.7 4.5v6.9H3V5.6Zm8.8-1.3L21 3v8.4h-9.2V4.3ZM3 12.6h7.7v6.9L3 18.4v-5.8Zm8.8 0H21V21l-9.2-1.3v-7.1Z" />
+  <span class="grid flex-none place-items-center border" :style="style" aria-hidden="true">
+    <svg v-if="variant === 'windows'" viewBox="0 0 24 24" fill="currentColor" :width="glyphSize" :height="glyphSize">
+      <path d="M2 2h9v9H2zM13 2h9v9h-9zM2 13h9v9H2zM13 13h9v9h-9z" />
     </svg>
-    <Command v-else-if="variant === 'mac'" :size="(size || 44) * 0.46" :stroke-width="2.2" />
-    <Terminal v-else-if="variant === 'linux'" :size="(size || 44) * 0.45" :stroke-width="2" />
-    <component v-else-if="['laptop', 'server', 'nas', 'workstation', 'virtual'].includes(variant)" :is="({ laptop: Laptop, server: Server, nas: HardDrive, workstation: Cpu, virtual: Boxes } as Record<string, any>)[variant]" :size="(size || 44) * 0.46" :stroke-width="1.9" />
-    <Monitor v-else :size="(size || 44) * 0.45" :stroke-width="1.9" />
+    <span
+      v-else-if="variant === 'mac' || variant === 'linux'"
+      class="brand-icon"
+      :class="variant"
+      :style="{ width: glyphSize + 'px', height: glyphSize + 'px' }"
+    />
+    <component v-else :is="hardwareIcon" :size="glyphSize" :stroke-width="1.9" />
   </span>
 </template>
+
+<style scoped>
+/* Brand silhouettes from Simple Icons. */
+.brand-icon {
+  background: currentColor;
+  mask: var(--brand-icon) center / contain no-repeat;
+}
+.mac { --brand-icon: url('../assets/device-icons/apple.svg'); }
+.linux { --brand-icon: url('../assets/device-icons/linux.svg'); }
+</style>

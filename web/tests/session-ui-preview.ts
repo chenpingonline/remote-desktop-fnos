@@ -9,7 +9,11 @@ document.documentElement.dataset.density = 'compact';
 document.documentElement.dataset.theme = new URLSearchParams(location.search).get('theme') || 'light';
 const encode = (...parts: (string | number)[]) => parts.map(p => `${Array.from(String(p)).length}.${p}`).join(',') + ';';
 const workspacePreview = new URLSearchParams(location.search).has('workspace');
-const mockConnections = ['台式电脑', 'MacBook Pro', '测试服务器'].map((name, i) => ({ id: `preview-${i}`, name, protocol: new URLSearchParams(location.search).has('rdp') ? 'rdp' : 'vnc', host: '127.0.0.1', port: 5900, credentialId: 'saved', settings: { clipboard: 'text' } }));
+const filePreview = new URLSearchParams(location.search).has('files');
+const fileMime = 'application/x-fnos-rdp-files';
+const fileTrace: string[] = [];
+(window as any).__fileTrace = fileTrace;
+const mockConnections = ['台式电脑', 'MacBook Pro', '测试服务器'].map((name, i) => ({ id: `preview-${i}`, name, protocol: new URLSearchParams(location.search).has('rdp') ? 'rdp' : 'vnc', host: '127.0.0.1', port: 5900, credentialId: 'saved', settings: { clipboard: 'text', fileClipboard: filePreview } }));
 const deletedSessions: string[] = [];
 (window as any).__deletedSessions = deletedSessions;
 const createdSessions: any[] = [];
@@ -23,7 +27,13 @@ window.fetch = async (input, init) => {
     let data: any = { items: [] };
     if (path === 'me') data = { uid: 'preview', name: '界面验收' };
     else if (path === 'connections') data = { items: mockConnections };
-    else if (path === 'sessions' && init?.method === 'POST') { createdSessions.push(JSON.parse(String(init.body))); data = { id: `design-preview-${++sessionCounter}` }; }
+    else if (path.startsWith('connections/') && path.split('/').length === 2) {
+      const connection = mockConnections.find(item => item.id === path.split('/')[1]);
+      if (!connection) return new Response('{}', { status: 404 });
+      if (init?.method === 'PATCH') Object.assign(connection, JSON.parse(String(init.body)));
+      data = connection;
+    }
+    else if (path === 'sessions' && init?.method === 'POST') { createdSessions.push(JSON.parse(String(init.body))); data = { id: filePreview ? String(++sessionCounter).padStart(64, "0") : `design-preview-${++sessionCounter}` }; }
     else if (path.endsWith('/certificate')) data = { status: 'trusted', check: 'preview-check', expiresAt: new Date(Date.now()+60000).toISOString() };
     else if (path.endsWith('/ticket')) data = { ticket: 'preview', webSocketPath: `ws://${location.host}/session-preview-tunnel` };
     else if (init?.method === 'DELETE') deletedSessions.push(path.split('/')[1]);
@@ -72,6 +82,11 @@ const NativeSocket = window.WebSocket;
       this.push(encode('', 'preview') + (previewParams.has('failed') ? '' : renderFrame(innerWidth, innerHeight)));
     }, 30);
   }
+  fileStream?: string;
+  installed = false;
+  clipboardEvent(text: string) {
+    this.push(encode('clipboard', 90, fileMime) + encode('blob', 90, btoa(text)) + encode('end', 90));
+  }
   push(data: string) { this.onmessage?.({ data }); }
   send(raw: string) {
     this.parser.oninstruction = (op: string, args: string[]) => {
@@ -82,6 +97,21 @@ const NativeSocket = window.WebSocket;
         displayRequests.push({ width, height, time: Date.now() });
         if (previewParams.has('ignore-resize') || previewParams.has('failed')) return;
         setTimeout(() => this.push(renderFrame(width, height)), Number(previewParams.get('resize-delay')) || 20);
+      } else if (filePreview && op === 'key' && args[1] === '1') {
+        if (args[0] === '99') {
+          fileTrace.push('copy');
+          setTimeout(() => this.clipboardEvent('pending'), 80);
+          setTimeout(() => this.clipboardEvent('a'.repeat(32)), 250);
+        } else if (args[0] === '118') fileTrace.push(this.installed ? 'paste' : 'premature-paste');
+      } else if (filePreview && op === 'clipboard' && args[1] === fileMime) {
+        this.fileStream = args[0];
+      } else if (filePreview && op === 'blob' && args[0] === this.fileStream) {
+        const cap = atob(args[1]);
+        this.fileStream = undefined;
+        if (/^[0-9a-f]{64}\/[0-9a-f]{32}$/.test(cap)) {
+          fileTrace.push('install');
+          setTimeout(() => { this.installed = true; this.clipboardEvent('installed:' + cap); }, 100);
+        }
       } else if (op === 'mouse') {
         mouseRequests.push(args);
       } else if (op === 'clipboard' || op === 'blob') {

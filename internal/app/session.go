@@ -11,6 +11,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"remote-desktop/internal/guac"
 	"strconv"
 	"strings"
@@ -138,6 +140,9 @@ func (a *App) sessionAPI(w http.ResponseWriter, r *http.Request, u User, id stri
 		}
 	}
 	origin, _ := browserOrigin(r)
+	if in.Wallpaper == nil {
+		in.Wallpaper = c.Settings.Wallpaper
+	}
 	s := &Session{CertificateFingerprint: fingerprint, Origin: origin, ID: randomID(), Owner: u.UID, ConnectionID: c.ID, Config: c, Wallpaper: in.Wallpaper, RenderMode: in.RenderMode, Display: in.Display, Timezone: in.Timezone, State: "CREATED", CreatedAt: time.Now().UTC()}
 	s.ExpiresAt = s.CreatedAt.Add(90 * time.Second)
 	if in.Ref != "" {
@@ -283,6 +288,20 @@ func (a *App) tunnel(w http.ResponseWriter, r *http.Request, u User) {
 	s.Login = Credential{}
 	a.mu.Unlock()
 	defer cancel()
+	fileClipboard := s.Config.Protocol == "rdp" && s.Config.Settings.FileClipboard != nil && *s.Config.Settings.FileClipboard
+	if fileClipboard {
+		owner := fmt.Sprintf("%x", sha256.Sum256([]byte(s.Owner)))
+		dir, err := filepath.Abs(filepath.Join(a.cfg.DataDir, "rdp-file-clipboard", owner, s.ID))
+		if err != nil || os.MkdirAll(dir, 0700) != nil {
+			a.mu.Lock()
+			a.closeLocked(s, "IO_ERROR", true)
+			a.mu.Unlock()
+			fail(w, 500, "IO_ERROR", "无法创建文件剪贴板临时目录")
+			return
+		}
+		defer os.RemoveAll(dir)
+		p["file-clipboard-path"] = dir
+	}
 	ws, e := websocket.Accept(w, r, &websocket.AcceptOptions{Subprotocols: []string{"guacamole"}, OriginPatterns: []string{webSocketOriginHost(r)}})
 	if e != nil {
 		a.mu.Lock()
@@ -376,7 +395,7 @@ func (a *App) tunnel(w http.ResponseWriter, r *http.Request, u User) {
 		}
 	}()
 	go func() {
-		streams := map[string]int{}
+		remaining := map[string]int{}
 		for {
 			typ, b, e := ws.Read(ctx)
 			if e != nil {
@@ -422,28 +441,34 @@ func (a *App) tunnel(w http.ResponseWriter, r *http.Request, u User) {
 					s.LastInput = time.Now()
 					a.mu.Unlock()
 				case "clipboard":
-					if s.Config.Settings.Clipboard != "text" || len(parts) != 3 || parts[2] != "text/plain" || len(streams) >= 4 {
+					if len(parts) != 3 || len(remaining) >= 4 ||
+						!((s.Config.Settings.Clipboard == "text" && parts[2] == "text/plain") ||
+							(fileClipboard && parts[2] == "application/x-fnos-rdp-files")) {
 						errs <- "PROTOCOL_ERROR"
 						return
 					}
-					streams[parts[1]] = 0
+					remaining[parts[1]] = 1 << 20
+					if parts[2] == "application/x-fnos-rdp-files" {
+						// A single 97-byte capability fits in 132 base64 characters.
+						remaining[parts[1]] = 132
+					}
 				case "blob":
 					if len(parts) != 3 {
 						errs <- "PROTOCOL_ERROR"
 						return
 					}
-					n, ok := streams[parts[1]]
-					if !ok || n+len(parts[2]) > 1<<20 {
+					budget, ok := remaining[parts[1]]
+					if !ok || len(parts[2]) > budget {
 						errs <- "PROTOCOL_ERROR"
 						return
 					}
-					streams[parts[1]] = n + len(parts[2])
+					remaining[parts[1]] = budget - len(parts[2])
 				case "end":
 					if len(parts) != 2 {
 						errs <- "PROTOCOL_ERROR"
 						return
 					}
-					delete(streams, parts[1])
+					delete(remaining, parts[1])
 				case "ack":
 				case "disconnect":
 					errs <- "USER_CLOSED"

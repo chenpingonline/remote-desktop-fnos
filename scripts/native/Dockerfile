@@ -44,6 +44,9 @@ COPY patch-freerdp3-lifecycle.py /tmp/patch-freerdp3-lifecycle.py
 RUN python3 /tmp/patch-freerdp3-lifecycle.py && make -C src/protocols/rdp -j4 && make -C src/protocols/rdp install
 COPY patch-nla-account-auth.py /tmp/patch-nla-account-auth.py
 RUN python3 /tmp/patch-nla-account-auth.py && make -C src/protocols/rdp -j4 && make -C src/protocols/rdp install
+COPY file-clipboard.c src/protocols/rdp/channels/file-clipboard.c
+COPY patch-file-clipboard.py /tmp/patch-file-clipboard.py
+RUN python3 /tmp/patch-file-clipboard.py && make -C src/protocols/rdp -j4 && make -C src/protocols/rdp install
 RUN mkdir -p /out/bin /out/lib /out/licenses && cp /opt/remote-desktop/sbin/guacd /out/bin/ && cp -aL /opt/remote-desktop/lib/*.so* /out/lib/ && cp LICENSE /out/licenses/Guacamole-LICENSE && cp NOTICE /out/licenses/Guacamole-NOTICE && dpkg-query -W > /out/dependencies.tsv && \
  find /opt/remote-desktop -type f -name '*.so*' -o -name guacd | xargs ldd | awk '/=> \/(usr\/)?lib/{print $3}' | sort -u | while read lib; do case "$lib" in */libc.so.*|*/libm.so.*|*/libpthread.so.*|*/libdl.so.*|*/librt.so.*|*/ld-linux*) ;; *) cp -L "$lib" /out/lib/ ;; esac; done && \
  mkdir -p /out/licenses/debian-copyrights /out/licenses/common-licenses && \

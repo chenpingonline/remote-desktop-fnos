@@ -28,9 +28,11 @@ export interface Connection {
   probe?: ConnectionProbe;
   version?: number;
   settings?: {
+    wallpaper?: boolean;
     icon?: string;
     security: string;
     clipboard: string;
+    fileClipboard?: boolean;
     certificatePolicy: string;
     authMode: string;
   };
@@ -159,9 +161,11 @@ export interface WorkspaceState {
 }
 
 export interface ConnectionInput {
+  wallpaper?: boolean;
   icon?: string;
   version?: number;
   clipboard?: boolean;
+  fileClipboard?: boolean;
   wolEnabled?: boolean;
   wolMac?: string;
   wolBroadcast?: string;

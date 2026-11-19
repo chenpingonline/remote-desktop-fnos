@@ -17,6 +17,8 @@ type User struct {
 	CSRF  string `json:"csrfToken"`
 }
 type Settings struct {
+	FileClipboard     *bool  `json:"fileClipboard,omitempty"`
+	Wallpaper         *bool  `json:"wallpaper,omitempty"`
 	Icon              string `json:"icon,omitempty"`
 	Security          string `json:"security"`
 	Clipboard         string `json:"clipboard"`

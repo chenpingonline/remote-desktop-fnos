@@ -97,3 +97,24 @@ func TestVNCTargetIsAutomaticAcrossPlatforms(t *testing.T) {
 		t.Fatalf("invalid target accepted: %d", w.Code)
 	}
 }
+
+func TestNewConnectionClipboardDefaults(t *testing.T) {
+	a := testApp(t)
+	for _, tc := range []struct {
+		protocol  string
+		settings  map[string]any
+		wantText  string
+		wantFiles bool
+	}{
+		{"rdp", nil, "text", true},
+		{"rdp", map[string]any{"clipboard": "disabled", "fileClipboard": false}, "disabled", false},
+		{"vnc", nil, "text", false},
+	} {
+		request := map[string]any{"name": "desktop", "host": "localhost", "port": 3389, "protocol": tc.protocol, "settings": tc.settings}
+		result := object(t, call(a, "alice", "POST", "/connections", request))
+		settings := result["settings"].(map[string]any)
+		if settings["clipboard"] != tc.wantText || (settings["fileClipboard"] == true) != tc.wantFiles {
+			t.Fatalf("%s clipboard settings: %v", tc.protocol, settings)
+		}
+	}
+}

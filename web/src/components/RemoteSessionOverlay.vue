@@ -16,7 +16,7 @@ import {
   loadDisplayScale,
   loadResolutionMode,
 } from "../display";
-import { rawConnection, refreshWorkspace, state } from "../stores/app";
+import { saveClipboardSettings, type ClipboardChanges, rawConnection, refreshWorkspace, state } from "../stores/app";
 import { closeRemote, ui, toast, requestConfirm } from "../stores/ui";
 import type { CertificateInspection } from "../certificates";
 import "../assets/native-desktop.css";
@@ -32,6 +32,7 @@ const sessions = ref<
     protocol: string;
     targetOs: string;
     clipboard: boolean;
+    fileClipboard: boolean;
     renderMode: RenderMode;
     wallpaper: boolean;
     status: string;
@@ -47,6 +48,7 @@ const active = ref(""),
 const workspace = ref<HTMLElement>();
 const isFullscreen = ref(false);
 const ending = ref(false);
+const sessionWallpapers = new Map<string, boolean>();
 function sessionStatus(id: string, status: string) {
   const session = sessions.value.find(s => s.id === id);
   if (session) session.status = status;
@@ -120,7 +122,7 @@ async function start(
   flow.mode = "running";
   flow.error = "";
   const renderMode = loadRenderMode(c.protocol);
-  const wallpaper = loadWallpaper();
+  const wallpaper = sessionWallpapers.get(c.id) ?? c.settings?.wallpaper ?? loadWallpaper();
   const s = await api("/sessions", "POST", {
     renderMode,
     ...(c.protocol === "rdp" ? { wallpaper } : {}),
@@ -150,6 +152,7 @@ async function start(
     connectionId: c.id,
     protocol: c.protocol,
     targetOs: c.targetOs,
+    fileClipboard: c.protocol === "rdp" && !!c.settings.fileClipboard,
     clipboard: c.settings.clipboard === "text",
     progress: flow,
   });
@@ -406,7 +409,7 @@ async function closeSession(id: string) {
       description: "将结束此远程连接并关闭标签，其他会话继续保持连接。",
       confirmText: "断开连接",
     }))) return;
-    await end(id);
+    if (await end(id)) sessionWallpapers.delete(session.connectionId);
   } finally { ending.value = false; }
 }
 function tabKey(event: KeyboardEvent, index: number) {
@@ -421,10 +424,12 @@ function tabKey(event: KeyboardEvent, index: number) {
   nextTick(() => document.getElementById(`remote-tab-${active.value}`)?.focus());
 }
 const reconnecting = new Set<string>();
-async function reconnect(connectionId: string, id: string) {
+async function reconnect(connectionId: string, id: string, wallpaper?: boolean, clipboardChanges?: ClipboardChanges) {
+  if (wallpaper !== undefined) sessionWallpapers.set(connectionId, wallpaper);
   if (reconnecting.has(connectionId)) return;
   reconnecting.add(connectionId);
   try {
+    if (clipboardChanges) await saveClipboardSettings(connectionId, clipboardChanges);
     const c = rawConnection(connectionId);
     if (!(await end(id))) return;
     clearPending();
@@ -432,7 +437,7 @@ async function reconnect(connectionId: string, id: string) {
     ui.remote.open = true;
     await nextTick();
     await connect();
-  } finally { reconnecting.delete(connectionId); }
+  } catch (e) { fail(e); } finally { reconnecting.delete(connectionId); }
 }
 async function openRequestedConnection() {
   const connectionId = ui.remote.connection?.id;
@@ -548,11 +553,12 @@ onBeforeUnmount(() => {
           :connection-id="s.connectionId"
           :target-os="s.targetOs"
           :clipboard="s.clipboard"
+          :file-clipboard="s.fileClipboard"
           :render-mode="s.renderMode"
           :wallpaper="s.wallpaper"
           @status-change="sessionStatus(s.id, $event)"
           @close="closeSession(s.id)"
-          @reconnect="reconnect(s.connectionId, s.id)"
+          @reconnect="(wallpaper, changes) => reconnect(s.connectionId, s.id, wallpaper, changes)"
           @progress="(stage, message) => desktopProgress(s.id, stage, message)"
         />
         <ConnectionProgress

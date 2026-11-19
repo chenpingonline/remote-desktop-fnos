@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { reactive, watch, ref } from "vue";
+import { computed, reactive, watch, ref } from "vue";
 import { Check, Zap } from "lucide-vue-next";
+import { loadWallpaper } from "../display";
 import DeviceIcon from "./DeviceIcon.vue";
 import { deviceIcons } from "../device-icons";
+import CredentialFormModal from "./CredentialFormModal.vue";
 import BaseModal from "./BaseModal.vue";
 import {
   removeWol,
@@ -44,7 +46,7 @@ interface ConnectionFormState {
   tags: string;
   notes: string;
   favorite: boolean;
-  clipboard: boolean;
+  wallpaper: boolean;
   wolEnabled: boolean;
   wolMac: string;
   wolBroadcast: string;
@@ -53,6 +55,11 @@ interface ConnectionFormState {
 const form = reactive<ConnectionFormState>({} as ConnectionFormState);
 const errors = reactive<Record<string, string>>({});
 const busy = ref(false);
+const creatingCredential = ref(false);
+
+const availableCredentials = computed(() =>
+  state.credentials.filter((credential) => credential.protocol === form.protocol?.toLowerCase()),
+);
 
 function blankForm(): ConnectionFormState {
   return {
@@ -69,7 +76,7 @@ function blankForm(): ConnectionFormState {
     tags: "",
     notes: "",
     favorite: false,
-    clipboard: false,
+    wallpaper: loadWallpaper(),
     wolEnabled: false,
     wolMac: "",
     wolBroadcast: "",
@@ -87,7 +94,7 @@ function resetForm() {
         : "",
       icon: props.connection.settings?.icon || "auto",
       favorite: Boolean(props.connection.favorite),
-      clipboard: props.connection.settings?.clipboard === "text",
+      wallpaper: props.connection.settings?.wallpaper ?? loadWallpaper(),
     });
     const linked = wolByConnection(props.connection.id);
     form.wolEnabled = Boolean(linked);
@@ -100,11 +107,13 @@ watch(
   () => props.open,
   (open) => {
     if (open) resetForm();
+    else creatingCredential.value = false;
   },
   { immediate: true },
 );
 
 function setProtocol(protocol: string) {
+  if (protocol === form.protocol) return;
   const previous = protocols.find((item) => item.value === form.protocol);
   form.protocol = protocol;
   form.credentialId = "";
@@ -181,14 +190,22 @@ async function submit() {
         />
       </el-form-item>
       <el-form-item label="设备图标">
-        <div class="device-icon-options" role="group" aria-label="设备图标">
-          <button v-for="option in deviceIcons" :key="option.value" type="button"
-            :aria-label="option.label" :aria-pressed="form.icon === option.value"
-            @click="form.icon = option.value">
-            <DeviceIcon :icon="option.value" :os="form.protocol === 'RDP' ? 'Windows' : ''" :size="32" />
-            <span>{{ option.label }}</span>
-          </button>
-        </div>
+        <el-select v-model="form.icon" class="w-full" aria-label="设备图标">
+          <template #prefix>
+            <DeviceIcon :icon="form.icon" :os="form.protocol === 'RDP' ? 'Windows' : ''" :size="22" />
+          </template>
+          <el-option
+            v-for="option in deviceIcons"
+            :key="option.value"
+            :value="option.value"
+            :label="option.label"
+          >
+            <span class="flex h-full items-center gap-2">
+              <DeviceIcon :icon="option.value" :os="form.protocol === 'RDP' ? 'Windows' : ''" :size="22" />
+              {{ option.label }}
+            </span>
+          </el-option>
+        </el-select>
       </el-form-item>
       <el-form-item label="所属分组">
         <el-select
@@ -258,26 +275,29 @@ async function submit() {
         </div>
       </el-form-item>
 
-      <el-form-item label="文本剪贴板"
-        ><el-switch v-model="form.clipboard" aria-label="启用文本剪贴板"
-      /></el-form-item>
-      <el-form-item label="默认凭据">
-        <el-select
-          v-model="form.credentialId"
-          class="w-full"
-          placeholder="不保存凭据"
-          aria-label="默认凭据"
-        >
-          <el-option label="不保存凭据" value="" />
-          <el-option
-            v-for="credential in state.credentials.filter(
-              (c) => c.protocol === form.protocol.toLowerCase(),
-            )"
-            :key="credential.id"
-            :label="`${credential.name} · ${credential.protocol?.toUpperCase()}`"
-            :value="credential.id"
-          />
-        </el-select>
+      <el-form-item v-if="form.protocol === 'RDP'" label="桌面壁纸">
+        <el-switch v-model="form.wallpaper" aria-label="显示桌面壁纸" />
+      </el-form-item>
+      <el-form-item label="认证方式">
+        <div class="flex w-full items-center gap-2">
+          <el-select
+            v-model="form.credentialId"
+            class="min-w-0 flex-1"
+            placeholder="连接时输入"
+            aria-label="认证方式"
+          >
+            <el-option label="连接时输入" value="" />
+            <el-option-group label="已有凭据" v-if="availableCredentials.length">
+              <el-option
+                v-for="credential in availableCredentials"
+                :key="credential.id"
+                :label="credential.name"
+                :value="credential.id"
+              />
+            </el-option-group>
+          </el-select>
+          <el-button @click="creatingCredential = true">新建凭据</el-button>
+        </div>
       </el-form-item>
 
       <div class="rounded-xl border border-line bg-soft px-3 py-2.5">
@@ -344,12 +364,10 @@ async function submit() {
       </el-button>
     </template>
   </BaseModal>
+  <CredentialFormModal
+    :open="creatingCredential"
+    :connection-protocol="form.protocol?.toLowerCase()"
+    @saved="form.credentialId = $event.id"
+    @close="creatingCredential = false"
+  />
 </template>
-
-<style scoped>
-.device-icon-options { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; width: 100%; }
-.device-icon-options button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-2); font-size: 11px; }
-.device-icon-options button[aria-pressed="true"] { border-color: var(--accent-strong); background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--accent-strong); }
-.device-icon-options button:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
-@media (max-width: 480px) { .device-icon-options { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-</style>

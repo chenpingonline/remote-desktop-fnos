@@ -4,6 +4,8 @@ import AppSelect from "./components/AppSelect.vue";
 import { ref, computed, onMounted, onBeforeUnmount, watch, useId, nextTick } from "vue";
 import Guacamole from "./vendor/guacamole.js";
 import { sendClipboard, receiveClipboard } from "./clipboard";
+import { beginFileOffer, clearFileOffer, finishFileOffer, fileClipboardMime, fileOffer } from "./file-clipboard";
+import type { ClipboardChanges } from "./stores/app";
 import { api, states, reasons } from "./api";
 import { Maximize, Unplug, Send, Monitor, SlidersHorizontal, X, Settings, Clipboard } from "lucide-vue-next";
 const props = defineProps<{
@@ -13,12 +15,20 @@ const props = defineProps<{
     connectionId?: string;
     targetOs?: string;
     clipboard: boolean;
+    fileClipboard?: boolean;
     toolbarTarget?: string;
     active?: boolean;
     renderMode?: RenderMode;
     wallpaper?: boolean;
   }>(),
-  emit = defineEmits<{ "status-change": [status: string]; close: []; reconnect: []; progress: [stage: "connecting" | "waiting" | "ready" | "failed", message?: string] }>();
+  emit = defineEmits<{ "status-change": [status: string]; close: []; reconnect: [wallpaper?: boolean, clipboardChanges?: ClipboardChanges]; progress: [stage: "connecting" | "waiting" | "ready" | "failed", message?: string] }>();
+const textEnabled = ref(props.clipboard);
+const filesEnabled = ref(!!props.fileClipboard);
+const clipboardChanges = computed<ClipboardChanges>(() => ({
+  ...(textEnabled.value !== props.clipboard ? { clipboard: textEnabled.value ? "text" as const : "disabled" as const } : {}),
+  ...(props.protocol === "rdp" && filesEnabled.value !== !!props.fileClipboard ? { fileClipboard: filesEnabled.value } : {}),
+}));
+const clipboardPending = computed(() => Object.keys(clipboardChanges.value).length > 0);
 const initialWallpaper = props.wallpaper ?? loadWallpaper();
 const wallpaper = ref(initialWallpaper);
 const wallpaperPending = computed(() => props.protocol === "rdp" && wallpaper.value !== initialWallpaper);
@@ -31,7 +41,7 @@ function applySettings() {
   saveRenderMode(props.protocol, renderMode.value);
   if (props.protocol === "rdp") saveDisplayScale(props.protocol, Number(displayScale.value));
   if (props.protocol === "rdp") saveWallpaper(wallpaper.value);
-  emit("reconnect");
+  emit("reconnect", wallpaper.value, clipboardPending.value ? clipboardChanges.value : undefined);
 }
 const resolutionMode = ref(loadResolutionMode(props.protocol));
 const remoteResolution = ref({ width: 0, height: 0 });
@@ -44,8 +54,8 @@ const initialContentScale = loadDisplayScale(props.protocol);
 const displayScale = ref(String(initialContentScale));
 const scalePending = computed(() => Number(displayScale.value) !== initialContentScale);
 const resizeInfo = ref("");
-const reconnectPending = computed(() => wallpaperPending.value || renderModePending.value || (props.protocol === "rdp" && scalePending.value) || resizeInfo.value.includes("未确认"));
-const pendingLabels = computed(() => [wallpaperPending.value ? "桌面壁纸" : "", renderModePending.value ? "画质模式" : "", props.protocol === "rdp" && scalePending.value ? "内容大小" : "", resizeInfo.value.includes("未确认") ? "分辨率" : ""].filter(Boolean).join("、"));
+const reconnectPending = computed(() => clipboardPending.value || wallpaperPending.value || renderModePending.value || (props.protocol === "rdp" && scalePending.value) || resizeInfo.value.includes("未确认"));
+const pendingLabels = computed(() => [clipboardPending.value ? "剪贴板" : "", wallpaperPending.value ? "桌面壁纸" : "", renderModePending.value ? "画质模式" : "", props.protocol === "rdp" && scalePending.value ? "内容大小" : "", resizeInfo.value.includes("未确认") ? "分辨率" : ""].filter(Boolean).join("、"));
 function changeDisplayScale() {
   saveDisplayScale(props.protocol, Number(displayScale.value));
 }
@@ -111,7 +121,8 @@ function updateSettingsBounds() {
 }
 watch(settingsOpen, (open) => { if (open) nextTick(updateSettingsBounds); });
 watch(() => props.active, (active) => {
-  if (active === false) { closeTools(); clipboardOpen.value = false; release(); }
+  if (active === false) { ++pasteGeneration; closeTools(); clipboardOpen.value = false; release(); }
+  else if (props.fileClipboard && fileOffer()) nextTick(() => canvas.value?.focus({ preventScroll: true }));
 });
 const contentLabelId = useId();
 const clipboardId = useId();
@@ -221,7 +232,7 @@ const canvas = ref<HTMLElement>(),
   text = ref(""),
   zoom = ref("fit"),
   clipboardOpen = ref(false),
-  clipboardInfo = ref("已启用文字双向同步");
+  clipboardInfo = ref(props.fileClipboard ? "在一个 RDP 会话复制文件，切换到另一个会话粘贴" : "已启用文字双向同步");
 watch(status, (value) => emit("status-change", value), { immediate: true });
 let client: any,
   keyboard: any,
@@ -322,6 +333,7 @@ function updateViewport() {
 }
 async function disconnect() {
   closed = true;
+  stopFiles();
   connected = false;
   stopClipboard();
   clearTimeout(resizeTimer);
@@ -356,14 +368,91 @@ function stopClipboard() {
   clipboardTransfers.clear();
 }
 let lastRemoteText: string | undefined;
-function clipboardActive() {
-  return props.clipboard && connected && !closed && !document.hidden &&
+function canvasActive() {
+  return props.active !== false && connected && !closed && !document.hidden &&
     document.hasFocus() && !!canvas.value?.getClientRects().length &&
     document.activeElement === canvas.value;
 }
+function clipboardActive() { return props.clipboard && canvasActive(); }
+
+let copyGestureAt = 0;
+function leaveWorkspace() {
+  ++pasteGeneration;
+  release();
+  clearFileOffer();
+  copyGestureAt = 0;
+}
+let installWait: { token: string; finish: (ok: boolean) => void } | undefined;
+let pastePending = false;
+let pasteGeneration = 0;
+function stopFiles() {
+  clearFileOffer(props.sessionId);
+  installWait?.finish(false);
+}
+function fileMessage(message: string) {
+  if (closed || !connected) return;
+  const offer = fileOffer();
+  if (message === "pending") {
+    if (!document.hasFocus() || (props.active === false && Date.now() - copyGestureAt > 3000)) return;
+    beginFileOffer(props.sessionId);
+    ++clipboardRevision;
+    lastRemoteText = undefined;
+    clipboardInfo.value = "正在从远端读取文件";
+  } else if (/^[a-f0-9]{32}$/.test(message) && offer?.source === props.sessionId) {
+    finishFileOffer(props.sessionId, props.sessionId + "/" + message);
+    clipboardInfo.value = "文件已就绪，可切换到目标会话粘贴";
+  } else if (message === "failed" || message === "clear") {
+    clearFileOffer(props.sessionId);
+    if (message === "failed") clipboardInfo.value = "文件复制失败；每次最多 64 个普通文件、合计 256 MiB";
+  } else if (message === "rejected" || message === "installed:" + installWait?.token) {
+    installWait?.finish(message !== "rejected");
+  }
+}
+async function pasteFiles(offer: NonNullable<ReturnType<typeof fileOffer>>) {
+  if (pastePending) return;
+  pastePending = true;
+  const generation = pasteGeneration;
+  try {
+    clipboardInfo.value = "正在等待源会话的文件";
+    const token = await offer.ready;
+    if (!token) {
+      if (offer.detecting && !fileOffer() && generation === pasteGeneration && canvasActive()) {
+        if (props.clipboard) await pasteWithControl();
+        else special([remotePasteKey(), 0x76]);
+      } else clipboardInfo.value = "源文件已失效，请重新复制";
+      return;
+    }
+    if (fileOffer() !== offer || generation !== pasteGeneration || !canvasActive()) return;
+    lastRemoteText = undefined;
+    if (offer.source !== props.sessionId) {
+      clipboardInfo.value = "正在准备远端粘贴";
+      const installed = await new Promise<boolean>((resolve) => {
+        const finish = (ok: boolean) => {
+          if (installWait?.finish !== finish) return;
+          clearTimeout(timer);
+          installWait = undefined;
+          resolve(ok);
+        };
+        const timer = setTimeout(() => finish(false), 10000);
+        installWait = { token, finish };
+        const stream = client.createClipboardStream(fileClipboardMime);
+        sendClipboard(stream, token, () => finish(false));
+      });
+      if (!installed) {
+        clipboardInfo.value = "目标会话未接受文件，请重新复制并检查 Windows 剪贴板重定向策略";
+        return;
+      }
+    }
+    if (fileOffer() === offer && generation === pasteGeneration && canvasActive()) {
+      release();
+      special([remotePasteKey(), 0x76]);
+      clipboardInfo.value = "已在目标窗口执行文件粘贴";
+    }
+  } finally { pastePending = false; }
+}
 function transferText(value: string, paste = false) {
   const operation = clipboardQueue.catch(() => {}).then(async () => {
-    if (!clipboardActive()) return;
+    if (!clipboardActive() || (props.fileClipboard && fileOffer())) return;
     const bytes = new TextEncoder().encode(value).length;
     // The gateway limits total base64 payload, including padding per 4096-byte chunk.
     const encodedBytes = Math.floor(bytes / 4096) * 5464 + Math.ceil((bytes % 4096) / 3) * 4;
@@ -395,7 +484,7 @@ function transferText(value: string, paste = false) {
   clipboardQueue = operation.catch((e) => { if (!closed) clipboardInfo.value = String(e.message || e); });
 }
 async function syncLocalClipboard() {
-  if (!clipboardActive()) return;
+  if (!clipboardActive() || (props.fileClipboard && fileOffer())) return;
   const revision = ++clipboardRevision;
   try {
     const value = await navigator.clipboard.readText();
@@ -407,6 +496,13 @@ async function syncLocalClipboard() {
   }
 }
 function pasteText(event: ClipboardEvent) {
+  const offer = props.fileClipboard && fileOffer();
+  if (offer && canvasActive()) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    void pasteFiles(offer);
+    return;
+  }
   if (!clipboardActive() || !event.clipboardData) return;
   event.preventDefault();
   event.stopImmediatePropagation();
@@ -435,8 +531,23 @@ async function pasteWithControl() {
   }
 }
 function clipboardShortcut(event: KeyboardEvent) {
-  if (!clipboardActive()) return;
+  if (!canvasActive()) return;
   const key = event.key.toLowerCase();
+  const paste = ((event.ctrlKey || event.metaKey) && key === "v") || (event.shiftKey && key === "insert");
+  if ((event.ctrlKey || event.metaKey) && ["c", "x"].includes(key)) {
+    if (props.fileClipboard) beginFileOffer(props.sessionId, true);
+    else clearFileOffer();
+    copyGestureAt = Date.now();
+  }
+  const offer = props.fileClipboard && fileOffer();
+  if (paste && offer) {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    release();
+    if (!event.repeat) void pasteFiles(offer);
+    return;
+  }
+  if (!props.clipboard && !(props.fileClipboard && event.metaKey && ["c", "x"].includes(key))) return;
   if (((event.ctrlKey || event.metaKey) && key === "v") || (event.shiftKey && key === "insert")) {
     if (localMac && event.ctrlKey && !event.metaKey && key === "v" && !event.altKey) {
       event.preventDefault();
@@ -461,7 +572,8 @@ async function receiveRemoteText(value: string) {
   ++clipboardRevision;
   text.value = value;
   lastRemoteText = value;
-  if (!clipboardActive()) return;
+  if (!clipboardActive()) { clearFileOffer(props.sessionId); return; }
+  clearFileOffer();
   try {
     await navigator.clipboard.writeText(value);
     clipboardInfo.value = "远端文字已复制到本机";
@@ -470,6 +582,8 @@ async function receiveRemoteText(value: string) {
   }
 }
 function sendText() {
+  clearFileOffer();
+  lastRemoteText = undefined;
   canvas.value?.focus({ preventScroll: true });
   ++clipboardRevision;
   transferText(text.value);
@@ -490,7 +604,7 @@ async function copyText() {
 onMounted(async () => {
   fadeHandleLater();
   updateViewport();
-  window.addEventListener("blur", release);
+  window.addEventListener("blur", leaveWorkspace);
   window.addEventListener("focus", syncLocalClipboard);
   window.addEventListener("resize", updateViewport);
   document.addEventListener("fullscreenchange", updateViewport);
@@ -514,7 +628,7 @@ onMounted(async () => {
 
       if (!closed && state >= 4) status.value = firstFrame ? '已中断' : '连接失败';
       if (connected) updateViewport();
-      else { clearTimeout(resizeTimer); clearTimeout(resizeRetry); stopClipboard(); }
+      else { clearTimeout(resizeTimer); clearTimeout(resizeRetry); stopClipboard(); stopFiles(); }
     };
     client.onsync = () => {
       if (firstFrame || closed) return;
@@ -539,6 +653,10 @@ onMounted(async () => {
       if (connected && props.protocol === "rdp") requestRemoteSize();
     };
     client.onclipboard = (stream: any, mime: string) => {
+      if (props.fileClipboard && mime === fileClipboardMime) {
+        receiveClipboard(stream, fileMessage);
+        return;
+      }
       if (!props.clipboard || mime !== "text/plain") {
         client.sendAck(stream.index, "不支持该类型", 256);
         return;
@@ -587,6 +705,7 @@ onMounted(async () => {
 });
 onBeforeUnmount(() => {
   closed = true;
+  stopFiles();
   clearTimeout(toolsTimer);
   clearTimeout(fadeTimer);
   handleDrag = undefined;
@@ -597,7 +716,7 @@ onBeforeUnmount(() => {
   observer?.disconnect();
   window.removeEventListener("resize", updateViewport);
   document.removeEventListener("fullscreenchange", updateViewport);
-  window.removeEventListener("blur", release);
+  window.removeEventListener("blur", leaveWorkspace);
   window.removeEventListener("focus", syncLocalClipboard);
   release();
   client?.disconnect();
@@ -620,7 +739,7 @@ onBeforeUnmount(() => {
         <div v-if="!toolbarTarget" class="desktop-identity"><Monitor v-if="!toolbarTarget" :size="18"/><strong v-if="!toolbarTarget">{{ name }}</strong><span class="status" :class="{ good: status === '已连接' }">{{ status }}</span></div>
         <div class="desktop-actions">
           <button ref="settingsButton" aria-label="会话设置" title="会话设置" :class="{ 'session-settings-active': settingsOpen }" :aria-expanded="settingsOpen" @click="toggleSettings"><Settings :size="16" aria-hidden="true"/><span v-if="!toolbarTarget">会话设置</span></button>
-          <button v-if="clipboard" ref="clipboardButton" aria-label="剪贴板" :class="{ 'session-settings-active': clipboardOpen }" :title="'剪贴板 · ' + clipboardInfo" :aria-description="clipboardInfo" :aria-expanded="clipboardOpen" :aria-controls="clipboardId + '-panel'" @click="toggleClipboard"><Clipboard :size="16"/><span v-if="!toolbarTarget" class="secondary-label">剪贴板</span><span v-if="clipboardInfo.includes('受限') || clipboardInfo.includes('过长')" class="clipboard-attention" aria-hidden="true"/></button>
+          <button v-if="clipboard || fileClipboard" ref="clipboardButton" aria-label="剪贴板" :class="{ 'session-settings-active': clipboardOpen }" :title="'剪贴板 · ' + clipboardInfo" :aria-description="clipboardInfo" :aria-expanded="clipboardOpen" :aria-controls="clipboardId + '-panel'" @click="toggleClipboard"><Clipboard :size="16"/><span v-if="!toolbarTarget" class="secondary-label">剪贴板</span><span v-if="clipboardInfo.includes('受限') || clipboardInfo.includes('过长')" class="clipboard-attention" aria-hidden="true"/></button>
           <button v-if="!toolbarTarget" aria-label="全屏" @click="fullscreen"><Maximize :size="16"/></button>
           <button v-if="!toolbarTarget" aria-label="断开" @click="disconnect"><Unplug :size="16"/><span class="secondary-label">断开</span></button>
           <button v-if="['已断开', '连接失败', '已中断'].includes(status)" @click="emit('reconnect')">重新连接</button>
@@ -658,6 +777,10 @@ onBeforeUnmount(() => {
               </details>
             </fieldset></div>
           </section>
+          <section class="session-settings-group"><h3>剪贴板</h3>
+            <label class="session-row">文本剪贴板<input class="session-wallpaper-switch" type="checkbox" role="switch" v-model="textEnabled" /></label>
+            <label v-if="protocol === 'rdp'" class="session-row">跨会话文件剪贴板<input class="session-wallpaper-switch" type="checkbox" role="switch" v-model="filesEnabled" /></label>
+          </section>
           <section class="session-settings-group"><h3>键盘</h3>
             <label class="session-row">按键映射<AppSelect v-model="modifierMode" @change="changeModifierMode" aria-label="键盘映射" :options="[
               { value: 'native', label: '沿用本机设置' }, { value: 'mac', label: 'Command / Win 作为 Ctrl' },
@@ -691,11 +814,11 @@ onBeforeUnmount(() => {
     ><div ref="surface" class="remote-surface" /></div>
     <section v-if="clipboardOpen" :id="clipboardId + '-panel'" class="clipboard" role="dialog" :aria-labelledby="clipboardId + '-title'" aria-modal="false" @keydown.esc.stop.prevent="closeClipboard">
       <div class="clipboard-heading">
-        <h2 :id="clipboardId + '-title'">文本剪贴板</h2>
+        <h2 :id="clipboardId + '-title'">{{ fileClipboard ? '剪贴板' : '文本剪贴板' }}</h2>
         <button type="button" aria-label="关闭剪贴板" @click="closeClipboard"><X :size="16" /></button>
       </div>
       <div class="clipboard-body">
-        <textarea
+        <textarea v-if="clipboard"
           :id="clipboardId"
           aria-label="剪贴板文本"
           v-model="text"
@@ -703,7 +826,7 @@ onBeforeUnmount(() => {
           placeholder="粘贴文本后发送到远端"
           @focus="release"
         />
-        <div class="clipboard-actions">
+        <div v-if="clipboard" class="clipboard-actions">
           <button class="primary" :disabled="status !== '已连接'" @click="sendText">
             <Send :size="16" />发送到远端
           </button>

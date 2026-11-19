@@ -1,5 +1,5 @@
 appname=remote-desktop
-version=0.2.1
+version=0.2.3
 display_name=远程桌面（预览）
 desc=通过浏览器连接 RDP 与跨平台 VNC 桌面；兼容性待实机验收
 platform=x86

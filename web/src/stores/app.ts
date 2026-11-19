@@ -455,10 +455,13 @@ export async function saveConnection(p: ConnectionInput): Promise<Connection> {
         certificatePolicy: "verify",
         authMode: "password",
       }),
+      wallpaper: p.wallpaper ?? old?.settings?.wallpaper,
       icon: p.icon ?? old?.settings?.icon ?? "auto",
+      fileClipboard: (p.protocol || "RDP") === "RDP" &&
+        (p.fileClipboard ?? old?.settings?.fileClipboard ?? !old),
       clipboard:
         p.clipboard === undefined
-          ? old?.settings?.clipboard || "disabled"
+          ? old?.settings?.clipboard || (old ? "disabled" : "text")
           : p.clipboard
             ? "text"
             : "disabled",
@@ -486,6 +489,16 @@ export async function saveConnection(p: ConnectionInput): Promise<Connection> {
   };
   await refreshWorkspace();
   return mapConnection(saved);
+}
+export type ClipboardChanges = { clipboard?: "text" | "disabled"; fileClipboard?: boolean };
+export async function saveClipboardSettings(id: string, changes: ClipboardChanges) {
+  const connection = await api("/connections/" + id);
+  const saved = await api("/connections/" + id, "PATCH", {
+    ...connection,
+    settings: { ...connection.settings, ...changes },
+  });
+  rawConnections.set(id, saved);
+  await refreshWorkspace();
 }
 export async function removeConnection(id: string) {
   await api("/connections/" + id, "DELETE");

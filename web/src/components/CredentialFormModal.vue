@@ -11,6 +11,7 @@ const props = defineProps<{
   open: boolean;
   credential?: Credential | null;
   presetGroupId?: string;
+  connectionProtocol?: string;
 }>();
 
 const emit = defineEmits<{
@@ -51,7 +52,7 @@ function blankForm(): CredentialFormState {
     id: null,
     name: "",
     type: "password",
-    protocol: "rdp",
+    protocol: props.connectionProtocol || "rdp",
     domain: "",
     username: "",
     secret: "",
@@ -139,7 +140,7 @@ async function submit() {
         <el-select
           v-model="form.protocol"
           class="w-full"
-          :disabled="!!credential"
+          :disabled="!!credential || !!connectionProtocol"
           aria-label="凭据协议"
         >
           <el-option label="RDP · Windows" value="rdp" />
@@ -211,7 +212,7 @@ async function submit() {
     </el-form>
 
     <template #footer>
-      <el-button @click="emit('close')">取消</el-button>
+      <el-button :disabled="busy" @click="emit('close')">取消</el-button>
       <el-button type="primary" :loading="busy" @click="submit">
         <LockKeyhole :size="15" class="mr-1.5" />
         {{ credential ? "保存修改" : "保存凭据" }}

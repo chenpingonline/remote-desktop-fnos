@@ -91,6 +91,11 @@ func New(c Config) (*App, error) {
 			return nil, fmt.Errorf("database exists but master key is missing; restore matching backup")
 		}
 	}
+	// Session snapshots cannot be resumed after restart. The exclusive app lock
+	// ensures no live gateway owns these directories.
+	if e := os.RemoveAll(filepath.Join(c.DataDir, "rdp-file-clipboard")); e != nil {
+		return nil, e
+	}
 	v, e := secret.Open(c.KeyPath)
 	if e != nil {
 		return nil, e
@@ -656,6 +661,13 @@ func (a *App) writeObject(w http.ResponseWriter, r *http.Request, u User, kind, 
 		}
 		if c.Settings.Clipboard == "" {
 			c.Settings.Clipboard = "disabled"
+			if create {
+				c.Settings.Clipboard = "text"
+			}
+		}
+		if create && c.Protocol == "rdp" && c.Settings.FileClipboard == nil {
+			enabled := true
+			c.Settings.FileClipboard = &enabled
 		}
 		if c.Settings.AuthMode == "" {
 			c.Settings.AuthMode = "password"
