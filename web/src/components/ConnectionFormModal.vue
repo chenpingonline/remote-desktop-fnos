@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, watch, ref } from "vue";
-import { Check, Zap } from "lucide-vue-next";
+import { Check } from "lucide-vue-next";
 import { loadWallpaper } from "../display";
 import DeviceIcon from "./DeviceIcon.vue";
 import { deviceIcons } from "../device-icons";
@@ -257,7 +257,7 @@ async function submit() {
             </el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="所属分组">
+        <el-form-item class="secondary-field" label="所属分组" label-width="64px">
           <el-select
             v-model="form.groupId"
             class="w-full"
@@ -274,7 +274,7 @@ async function submit() {
           </el-select>
         </el-form-item>
 
-        <el-form-item class="connection-host" label="主机地址 / IP" :error="errors.host">
+        <el-form-item label="主机地址 / IP" :error="errors.host">
           <el-input
             v-model="form.host"
             placeholder="192.168.1.10 或 device.local"
@@ -284,7 +284,7 @@ async function submit() {
             spellcheck="false"
           />
         </el-form-item>
-        <el-form-item label="端口" :error="errors.port">
+        <el-form-item class="secondary-field" label="端口" label-width="64px" :error="errors.port">
           <el-input
             v-model="form.port"
             type="number"
@@ -326,9 +326,6 @@ async function submit() {
         </div>
       </el-form-item>
 
-      <el-form-item v-if="form.protocol === 'RDP'" label="桌面壁纸">
-        <el-switch v-model="form.wallpaper" aria-label="显示桌面壁纸" />
-      </el-form-item>
       <el-form-item label="认证方式">
         <div class="flex flex-wrap items-center gap-2">
           <div role="group" aria-label="认证方式" class="inline-flex rounded-lg border border-line bg-soft p-0.5">
@@ -356,60 +353,42 @@ async function submit() {
           <el-input v-model="login.password" type="password" show-password aria-label="密码" autocomplete="new-password" />
         </el-form-item>
         <el-form-item>
-          <div>
-            <el-checkbox v-model="remember">记住凭据</el-checkbox>
-            <p class="text-xs leading-normal text-muted">{{ remember ? '加密保存到我的凭据，供以后连接使用。' : '仅供本页面下次连接使用，刷新后清除。' }}</p>
-          </div>
+          <el-checkbox v-model="remember">记住凭据</el-checkbox>
         </el-form-item>
       </template>
 
-      <div class="rounded-xl border border-line bg-soft px-3 py-2.5">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex min-w-0 flex-1 items-center gap-2 text-faint">
-            <Zap :size="15" class="flex-none" />
-            <p class="text-[12px] font-semibold leading-5 text-ink">
-              网络唤醒 (WOL)<span
-                class="ml-1.5 text-[11px] font-normal text-faint max-[479px]:ml-0 max-[479px]:block"
-                >关机后可用魔术包远程开机</span
-              >
-            </p>
-          </div>
-          <el-switch
-            v-model="form.wolEnabled"
-            class="flex-none"
-            aria-label="启用网络唤醒"
-          />
-        </div>
-        <div
-          v-if="form.wolEnabled"
-          class="mt-2.5 grid grid-cols-1 gap-x-3 gap-y-2 border-t border-line pt-2.5 sm:grid-cols-2"
+      <div class="connection-fields">
+        <el-form-item label="网络唤醒">
+          <el-switch v-model="form.wolEnabled" aria-label="启用网络唤醒" />
+        </el-form-item>
+        <el-form-item v-if="form.protocol === 'RDP'" class="secondary-field" label="桌面壁纸" label-width="64px">
+          <el-switch v-model="form.wallpaper" aria-label="显示桌面壁纸" />
+        </el-form-item>
+      </div>
+      <div v-if="form.wolEnabled" class="connection-fields">
+        <el-form-item
+          label="MAC 地址"
+          :error="errors.wolMac"
         >
-          <el-form-item
-            label="MAC 地址"
-            label-width="68px"
-            :error="errors.wolMac"
-            class="!mb-0"
-          >
-            <el-input
-              v-model="form.wolMac"
-              class="font-mono"
-              placeholder="AA:BB:CC:DD:EE:FF"
-              aria-label="WOL MAC 地址"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </el-form-item>
-          <el-form-item label="广播地址" label-width="68px" class="!mb-0">
-            <el-input
-              v-model="form.wolBroadcast"
-              class="font-mono"
-              placeholder="留空自动选择直连子网"
-              aria-label="WOL 广播地址"
-              autocomplete="off"
-              spellcheck="false"
-            />
-          </el-form-item>
-        </div>
+          <el-input
+            v-model="form.wolMac"
+            class="font-mono"
+            placeholder="AA:BB:CC:DD:EE:FF"
+            aria-label="WOL MAC 地址"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </el-form-item>
+        <el-form-item class="secondary-field" label="广播地址" label-width="64px">
+          <el-input
+            v-model="form.wolBroadcast"
+            class="font-mono"
+            placeholder="自动选择"
+            aria-label="WOL 广播地址"
+            autocomplete="off"
+            spellcheck="false"
+          />
+        </el-form-item>
       </div>
 
     </el-form>
@@ -449,44 +428,46 @@ async function submit() {
 <style scoped>
 .connection-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
-  gap: 8px 12px;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 8px 40px;
   margin-bottom: 12px;
 }
 
+.connection-name {
+  grid-column: 1 / -1;
+}
+
 .connection-fields :deep(.el-form-item) {
-  display: block;
   min-width: 0;
   margin: 0;
-}
-
-.connection-form .connection-fields :deep(.el-form-item__label) {
-  width: auto !important;
-  height: auto;
-  margin: 0 0 4px;
-  padding: 0;
-  line-height: 1.4;
-}
-
-.connection-host {
-  grid-column: span 2;
 }
 
 .connection-fields :deep(.el-input:has(input[type="number"])) {
   max-width: 100px;
 }
 
-@media (max-width: 540px) {
+@media (min-width: 640px) {
+  .secondary-field :deep(.el-form-item__label) {
+    justify-content: flex-end;
+    padding-right: 8px;
+  }
+}
+
+@media (max-width: 639px) {
   .connection-fields {
-    grid-template-columns: minmax(0, 1fr) minmax(96px, 0.65fr);
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .connection-name {
-    grid-column: 1 / -1;
+  .relay-dialog .connection-form.el-form--label-left :deep(.el-form-item) {
+    display: flex;
   }
 
-  .connection-host {
-    grid-column: auto;
+  .relay-dialog .connection-form.el-form--label-left :deep(.el-form-item__label) {
+    width: 84px !important;
+    height: 32px;
+    align-items: center;
+    line-height: 1.3;
+    padding: 0 8px 0 0;
   }
 }
 </style>
