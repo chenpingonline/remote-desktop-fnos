@@ -5,6 +5,7 @@ import type {
   AccentName,
   Connection,
   ConnectionInput,
+  ConnectionLogin,
   ConnectionProbe,
   Credential,
   CredentialInput,
@@ -42,6 +43,16 @@ export const state = reactive<WorkspaceState>({
   },
 });
 const rawConnections = new Map<string, any>();
+const nextLogins = new Map<string, { version: number; login: ConnectionLogin }>();
+export function pendingLogin(id: string, version: number | undefined) {
+  const entry = nextLogins.get(id);
+  if (entry && entry.version === version) return { ...entry.login };
+}
+export function takePendingLogin(id: string, version: number) {
+  const login = pendingLogin(id, version);
+  nextLogins.delete(id);
+  return login;
+}
 const metadata = reactive<{
   connections: Record<string, any>;
   groups: Record<string, any>;
@@ -280,6 +291,7 @@ export function invalidateIdentity() {
   state.wol = [];
   state.activity = Array(7).fill(0);
   rawConnections.clear();
+  nextLogins.clear();
   probeResults.clear();
   metadata.connections = {};
   metadata.groups = {};
@@ -312,6 +324,8 @@ async function loadWorkspace() {
   if (generation !== refreshGeneration || backend.user?.uid !== uid) return;
   rawConnections.clear();
   connections.forEach((c) => rawConnections.set(c.id, c));
+  for (const [id, entry] of nextLogins)
+    if (rawConnections.get(id)?.version !== entry.version) nextLogins.delete(id);
   for (const id of probeResults.keys())
     if (!rawConnections.has(id)) probeResults.delete(id);
   state.connections = connections.map(mapConnection);
@@ -436,7 +450,7 @@ export const stats = computed<SessionStats>(() => {
       : 0,
   };
 });
-export async function saveConnection(p: ConnectionInput): Promise<Connection> {
+export async function saveConnection(p: ConnectionInput, auth?: { login: ConnectionLogin; remember: boolean }): Promise<Connection> {
   if (!["RDP", "VNC"].includes(p.protocol || "RDP"))
     throw new Error("后端仅支持 RDP 和 VNC");
   const old = p.id ? rawConnection(p.id) : null;
@@ -448,6 +462,7 @@ export async function saveConnection(p: ConnectionInput): Promise<Connection> {
     targetOs: p.protocol === "VNC" ? "auto" : "windows",
     groupId: p.groupId || "",
     credentialId: p.credentialId || "",
+    ...(auth?.remember ? { credential: auth.login } : {}),
     version: p.version ?? old?.version ?? 0,
     settings: {
       ...(old?.settings || {
@@ -480,6 +495,8 @@ export async function saveConnection(p: ConnectionInput): Promise<Connection> {
     p.id ? "PATCH" : "POST",
     body,
   );
+  if (auth && !auth.remember) nextLogins.set(saved.id, { version: saved.version, login: { ...auth.login } });
+  else nextLogins.delete(saved.id);
   metadata.connections[saved.id] = {
     ...metadata.connections[saved.id],
     favorite: !!p.favorite,

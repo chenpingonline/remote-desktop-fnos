@@ -16,7 +16,7 @@ import {
   loadDisplayScale,
   loadResolutionMode,
 } from "../display";
-import { saveClipboardSettings, type ClipboardChanges, rawConnection, refreshWorkspace, state } from "../stores/app";
+import { saveClipboardSettings, type ClipboardChanges, rawConnection, refreshWorkspace, takePendingLogin, state } from "../stores/app";
 import { closeRemote, ui, toast, requestConfirm } from "../stores/ui";
 import type { CertificateInspection } from "../certificates";
 import "../assets/native-desktop.css";
@@ -177,6 +177,14 @@ async function authorized(
   flow.mode = "running";
   pending.value = { connection: c, check, expiresAt, flow };
   if (!c.credentialId) {
+    const loginOnce = takePendingLogin(c.id, c.version);
+    if (loginOnce) {
+      const { ref } = await api("/ephemeral-credentials", "POST", {
+        connectionId: c.id, ...loginOnce,
+      });
+      await start(c, check, flow, ref);
+      return;
+    }
     Object.assign(login, { username: "", password: "", domain: "", remember: false });
     flow.mode = "login";
     loginOpen.value = true;

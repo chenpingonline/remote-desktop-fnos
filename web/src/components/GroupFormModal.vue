@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, watch, ref } from "vue";
+import { reactive, watch, ref } from "vue";
 import {
   Briefcase,
   Building2,
@@ -49,29 +49,25 @@ const icons: { value: string; label: string; icon: Component }[] = [
 ];
 
 const colors = [
-  "#c9ec58",
-  "#9bc8ff",
-  "#ffc48e",
-  "#d3b9ff",
-  "#8fe0c9",
-  "#f3a9bc",
-  "#f2d46b",
-  "#8ec6c5",
+  { value: "#c9ec58", label: "青柠绿" },
+  { value: "#9bc8ff", label: "天蓝" },
+  { value: "#ffc48e", label: "杏橙" },
+  { value: "#d3b9ff", label: "淡紫" },
+  { value: "#8fe0c9", label: "薄荷绿" },
+  { value: "#f3a9bc", label: "玫瑰粉" },
+  { value: "#f2d46b", label: "金黄" },
+  { value: "#8ec6c5", label: "青瓷绿" },
 ];
 const form = reactive<GroupFormState>({
   version: 0,
   id: null,
   name: "",
   description: "",
-  color: colors[0],
+  color: colors[0].value,
   icon: "folder",
 });
 const errors = reactive<Record<string, string>>({});
 const busy = ref(false);
-const previewIcon = computed(
-  () => icons.find((item) => item.value === form.icon) || icons[0],
-);
-
 function reset() {
   Object.keys(errors).forEach((key) => delete errors[key]);
   Object.assign(form, {
@@ -79,7 +75,7 @@ function reset() {
     id: null,
     name: "",
     description: "",
-    color: props.presetColor || colors[0],
+    color: props.presetColor || colors[0].value,
     icon: "folder",
   });
   if (props.group) Object.assign(form, props.group);
@@ -139,21 +135,16 @@ async function submit() {
       <GroupIcon :icon="form.icon" :color="form.color" :size="42" />
       <div class="flex min-w-0 flex-1 flex-col gap-px">
         <span
-          class="text-[9.5px] font-bold uppercase tracking-[0.1em] text-faint"
+          class="text-xs font-semibold text-muted"
           >分组预览</span
         >
-        <strong class="truncate text-[13px] font-bold text-ink">{{
+        <strong class="truncate text-base font-bold text-ink">{{
           form.name || "未命名分组"
         }}</strong>
-        <p class="truncate text-[10.5px] text-faint">
-          {{ form.description || "为你的远程设备创建一个清晰的空间" }}
+        <p v-if="form.description" class="break-words text-xs text-muted">
+          {{ form.description }}
         </p>
       </div>
-      <span
-        class="self-start text-[8px] font-bold tracking-[0.11em]"
-        :style="{ color: form.color }"
-        >PREVIEW</span
-      >
     </div>
 
     <el-form
@@ -181,28 +172,21 @@ async function submit() {
       </el-form-item>
 
       <el-form-item label="图标">
-        <div class="flex w-full flex-wrap gap-1.5">
-          <el-tooltip :show-arrow="false"
+        <div class="grid w-full grid-cols-[repeat(auto-fit,minmax(42px,1fr))] gap-1.5">
+          <button
             v-for="item in icons"
             :key="item.value"
-            :content="item.label"
-            placement="top"
-            :show-after="350"
+            type="button"
+            class="flex flex-col items-center justify-center gap-1 rounded-lg border py-2 text-xs leading-tight"
+            :class="form.icon === item.value
+              ? 'border-ink bg-ink text-surface'
+              : 'border-line bg-surface text-muted hover:border-line-strong hover:text-ink'"
+            :aria-pressed="form.icon === item.value"
+            @click="form.icon = item.value"
           >
-            <button
-              type="button"
-              class="grid h-8 w-8 place-items-center rounded-lg border bg-surface transition"
-              :class="
-                form.icon === item.value
-                  ? 'border-ink bg-ink text-canvas'
-                  : 'border-line text-faint hover:border-line-strong hover:text-ink'
-              "
-              :aria-label="item.label"
-              @click="form.icon = item.value"
-            >
-              <component :is="item.icon" :size="15" :stroke-width="1.9" />
-            </button>
-          </el-tooltip>
+            <component :is="item.icon" :size="18" aria-hidden="true" />
+            {{ item.label }}
+          </button>
         </div>
       </el-form-item>
 
@@ -210,30 +194,22 @@ async function submit() {
         <div class="flex w-full flex-wrap items-center gap-2">
           <button
             v-for="color in colors"
-            :key="color"
+            :key="color.value"
             type="button"
             class="grid h-6 w-6 place-items-center rounded-full text-[11px] font-extrabold text-[#243012] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] transition hover:scale-105"
             :class="
-              form.color === color
+              form.color === color.value
                 ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface'
                 : ''
             "
-            :style="{ background: color }"
-            :aria-label="`选择颜色 ${color}`"
-            @click="form.color = color"
+            :style="{ background: color.value }"
+            :aria-label="`选择颜色：${color.label}`"
+            :aria-pressed="form.color === color.value"
+            :title="color.label"
+            @click="form.color = color.value"
           >
-            <span v-if="form.color === color">✓</span>
+            <span v-if="form.color === color.value">✓</span>
           </button>
-          <span
-            class="ml-auto flex items-center gap-2 text-[10.5px] text-faint"
-          >
-            <GroupIcon
-              :icon="previewIcon.value"
-              :color="form.color"
-              :size="28"
-            />
-            {{ form.name || "分组" }}
-          </span>
         </div>
       </el-form-item>
     </el-form>

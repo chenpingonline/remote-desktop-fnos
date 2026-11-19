@@ -160,6 +160,12 @@ export interface WorkspaceState {
   settings: Settings;
 }
 
+export interface ConnectionLogin {
+  username: string;
+  password: string;
+  domain: string;
+}
+
 export interface ConnectionInput {
   wallpaper?: boolean;
   icon?: string;

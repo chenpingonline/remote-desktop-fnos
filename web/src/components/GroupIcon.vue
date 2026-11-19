@@ -28,9 +28,9 @@ const iconStyle = computed(() => {
     width: `${size}px`,
     height: `${size}px`,
     borderRadius: `${Math.round(size * 0.28)}px`,
-    background: `color-mix(in srgb, ${color} 17%, transparent)`,
-    color,
-    borderColor: `color-mix(in srgb, ${color} 23%, transparent)`,
+    background: `color-mix(in srgb, ${color} 35%, var(--surface))`,
+    color: `color-mix(in srgb, var(--text) 84%, ${color})`,
+    borderColor: `color-mix(in srgb, ${color} 70%, var(--text-2))`,
   }
 })
 </script>
