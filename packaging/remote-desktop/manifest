@@ -1,10 +1,11 @@
 appname=remote-desktop
-version=0.3.0
+version=0.3.3
 display_name=远程桌面
-desc=通过浏览器连接 RDP 与跨平台 VNC 桌面；兼容性待实机验收
+desc=通过浏览器连接 Windows 远程桌面（RDP）和使用密码认证的 VNC 桌面。<br>• <strong>多桌面切换</strong>　在不同标签页中操作多台电脑，支持缩放和全屏。<br>• <strong>连接与凭据管理</strong>　分组、收藏和搜索常用连接，加密保存登录凭据。<br>• <strong>剪贴板共享</strong>　在本机与远程桌面之间复制粘贴文本。两个 Windows RDP 会话都启用文件剪贴板后，可在会话间复制文件。<br>• <strong>局域网唤醒</strong>　向支持网络唤醒的电脑发送唤醒指令，开机后即可连接。
 platform=x86
 source=thirdparty
 maintainer=chenping
+maintainer_url=https://github.com/chenpingonline/remote-desktop-fnos
 distributor=chenping
 desktop_uidir=ui
 desktop_applaunchname=remote-desktop.main
