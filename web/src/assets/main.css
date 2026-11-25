@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  /* 默认配色：飞牛白 —— 与 fnOS 白色窗口衔接的中性浅色 */
+  /* 默认浅色配色：中性白 */
   --bg: #f4f5f6;
   --surface: #ffffff;
   --surface-2: #f7f8f9;

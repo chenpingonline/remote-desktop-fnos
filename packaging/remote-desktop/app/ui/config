@@ -1,0 +1,14 @@
+{
+  ".url": {
+    "remote-desktop.main": {
+      "title": "远程桌面",
+      "icon": "images/icon_{0}.png",
+      "type": "url",
+      "protocol": "",
+      "gatewayPrefix": "/app/remote-desktop",
+      "gatewaySocket": "app.sock",
+      "url": "/app/remote-desktop/",
+      "allUsers": true
+    }
+  }
+}

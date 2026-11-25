@@ -25,7 +25,9 @@ const tabs = [
   { id: "appearance", label: "外观" },
   { id: "security", label: "安全与证书" },
   { id: "diagnostics", label: "运行与诊断" },
+  { id: "about", label: "关于" },
 ];
+const appIcon = import.meta.env.BASE_URL + "apple-touch-icon.png";
 const themes = [
   {
     value: "light" as ThemeMode,
@@ -55,8 +57,8 @@ const accents = [
 const palettes = [
   {
     value: "native" as PaletteName,
-    label: "飞牛白",
-    darkLabel: "飞牛灰",
+    label: "中性白",
+    darkLabel: "中性灰",
     description: "贴近白色窗口",
     darkDescription: "中性深灰",
   },
@@ -131,7 +133,7 @@ onMounted(() => {
           :key="tab.id"
           role="tab"
           :aria-selected="activeTab === tab.id"
-          class="flex h-10 flex-1 items-center justify-center whitespace-nowrap rounded-lg px-3 text-xs font-semibold"
+          class="flex h-10 flex-1 items-center justify-center whitespace-nowrap rounded-lg px-2 text-xs font-semibold sm:px-3"
           :class="activeTab === tab.id ? 'bg-inset text-ink' : 'text-muted'"
           @click="activeTab = tab.id"
         >
@@ -501,6 +503,26 @@ onMounted(() => {
             ><time>{{ new Date(e.createdAt).toLocaleString() }}</time>
           </div>
         </template>
+        <div v-else-if="activeTab === 'about'" class="flex items-center gap-3">
+          <img :src="appIcon" alt="" width="48" height="48" class="h-12 w-12 rounded-xl" />
+          <div class="flex-1">
+            <h2 class="text-sm font-bold text-ink">远程桌面</h2>
+            <p class="mt-1 text-xs tabular-nums text-muted">当前版本 {{ backend.capabilities.version || '—' }}</p>
+          </div>
+          <a
+            href="https://github.com/chenpingonline/remote-desktop-fnos"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="打开远程桌面 GitHub 仓库"
+            title="GitHub 仓库"
+            class="grid h-7 w-7 flex-none place-items-center rounded-[7px] border border-transparent text-ink hover:border-line-strong hover:bg-soft focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <!-- Primer Octicons mark-github-16, licensed in public/licenses/primer-octicons.txt. -->
+            <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" focusable="false">
+              <path d="M6.766 11.328c-2.063-.25-3.516-1.734-3.516-3.656 0-.781.281-1.625.75-2.188-.203-.515-.172-1.609.063-2.062.625-.078 1.468.25 1.968.703.594-.187 1.219-.281 1.985-.281.765 0 1.39.094 1.953.265.484-.437 1.344-.765 1.969-.687.218.422.25 1.515.046 2.047.5.593.766 1.39.766 2.203 0 1.922-1.453 3.375-3.547 3.64.531.344.89 1.094.89 1.954v1.625c0 .468.391.734.86.547C13.781 14.359 16 11.53 16 8.03 16 3.61 12.406 0 7.984 0 3.563 0 0 3.61 0 8.031a7.88 7.88 0 0 0 5.172 7.422c.422.156.828-.125.828-.547v-1.25c-.219.094-.5.156-.75.156-1.031 0-1.64-.562-2.078-1.609-.172-.422-.36-.672-.719-.719-.187-.015-.25-.093-.25-.187 0-.188.313-.328.625-.328.453 0 .844.281 1.25.86.313.452.64.655 1.031.655s.641-.14 1-.5c.266-.265.47-.5.657-.656" />
+            </svg>
+          </a>
+        </div>
       </section>
     </div>
     <div class="native-desktop">

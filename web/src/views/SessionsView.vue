@@ -323,7 +323,7 @@ function resetFilters() {
         <span>显示 {{ filteredSessions.length }} 条记录</span>
         <span class="h-0.5 w-0.5 rounded-full bg-line-strong"></span>
         <span>会话记录默认保留 90 天</span>
-        <span class="ml-auto flex items-center gap-1"><Clock3 :size="11" /> 时间以本地时区显示</span>
+        <span class="ml-auto flex items-center gap-1"><Clock3 :size="11" /> 显示时区：{{ state.settings.timezone }}</span>
       </footer>
     </section>
 
