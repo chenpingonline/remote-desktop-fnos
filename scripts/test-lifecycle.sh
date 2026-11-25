@@ -65,3 +65,48 @@ timeout 8 "$main" start
 timeout 3 "$main" status
 timeout 8 "$main" stop
 echo 'Unattended fresh startup and ignored legacy deployment parameters: PASS'
+
+# Use the wizard values fnOS would submit, and exercise uninstall without a UI value.
+uninstall="$RD_LIFECYCLE_ROOT/cmd/uninstall_init"
+install="$RD_LIFECYCLE_ROOT/cmd/install_callback"
+choices=$(python3 - "$RD_LIFECYCLE_SOURCE/wizard/uninstall" <<'PY'
+import json, sys
+field, = json.load(open(sys.argv[1]))[0]['items']
+assert field['type'] == 'radio' and field['initValue'] == 'false'
+assert [o['value'] for o in field['options']] == ['false', 'true']
+print(field['field'], *(o['value'] for o in field['options']))
+PY
+)
+read -r field keep purge <<< "$choices"
+unset "$field"
+cp "$TRIM_PKGETC/master.key" "$RD_LIFECYCLE_ROOT/original.key"
+db_checksum=$(sha256sum "$TRIM_PKGVAR/app.db")
+mkdir -p "$TRIM_PKGVAR/backups/previous"
+touch "$TRIM_PKGVAR/backups/previous/app.db"
+ln -s "$RD_LIFECYCLE_ROOT/original.key" "$TRIM_PKGVAR/external-link"
+for choice in default "$keep"; do
+ if [ "$choice" = default ]; then "$uninstall"; else env "$field=$choice" "$uninstall"; fi
+ # Model fnOS removing the configuration directory and remounting package data.
+ rm -f "$TRIM_PKGETC/master.key"
+ "$install"
+ "$install"
+ cmp "$RD_LIFECYCLE_ROOT/original.key" "$TRIM_PKGETC/master.key"
+ [ "$(stat -c %a "$TRIM_PKGETC/master.key")" = 600 ]
+ [ "$(sha256sum "$TRIM_PKGVAR/app.db")" = "$db_checksum" ]
+ [ -f "$TRIM_PKGVAR/backups/previous/app.db" ]
+done
+env "$field=$keep" "$uninstall"
+head -c 32 /dev/urandom > "$TRIM_PKGETC/master.key"
+if "$install"; then echo 'Conflicting credential keys accepted' >&2; exit 1; fi
+cmp "$RD_LIFECYCLE_ROOT/original.key" "$TRIM_PKGVAR/.uninstall-master.key"
+rm "$TRIM_PKGETC/master.key"
+if env "$field=$keep" "$uninstall"; then echo 'Missing credential key accepted' >&2; exit 1; fi
+"$install"
+cmp "$RD_LIFECYCLE_ROOT/original.key" "$TRIM_PKGETC/master.key"
+timeout 8 "$main" start
+timeout 3 "$main" status
+echo 'Default and explicit retention, paired key restore and service restart: PASS'
+env "$field=$purge" "$uninstall"
+[ -z "$(find "$TRIM_PKGVAR" "$TRIM_PKGETC" -mindepth 1 -print -quit)" ]
+[ -s "$RD_LIFECYCLE_ROOT/original.key" ]
+echo 'Explicit purge removes private data and backups, preserving external files: PASS'

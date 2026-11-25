@@ -1,0 +1,20 @@
+[
+  {
+    "stepTitle": "卸载远程桌面",
+    "items": [
+      {
+        "type": "radio",
+        "field": "wizard_delete_data",
+        "label": "应用数据",
+        "initValue": "false",
+        "options": [
+          { "label": "保留数据，在原存储空间重装后继续使用", "value": "false" },
+          { "label": "永久删除连接、凭据、唤醒设备、设置、日志和应用内备份", "value": "true" }
+        ],
+        "rules": [
+          { "required": true, "message": "请选择如何处理应用数据" }
+        ]
+      }
+    ]
+  }
+]

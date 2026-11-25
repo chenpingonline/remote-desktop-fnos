@@ -1,0 +1,37 @@
+#!/bin/bash
+# Keep the credential key with the database while fnOS removes the package.
+set -eu
+umask 077
+key="${TRIM_PKGETC:?}/master.key"
+saved="${TRIM_PKGVAR:?}/.uninstall-master.key"
+
+fail() {
+ printf '%s\n' "$1" >&2
+ if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then printf '%s\n' "$1" >> "$TRIM_TEMP_LOGFILE"; fi
+ exit 1
+}
+
+case "$1" in
+ save) source=$key; destination=$saved ;;
+ restore) source=$saved; destination=$key ;;
+ *) exit 1 ;;
+esac
+
+if [ ! -e "$source" ] && [ ! -L "$source" ]; then
+ if [ -e "$TRIM_PKGVAR/app.db" ] && [ ! -f "$key" ]; then
+  fail '数据库的主密钥缺失，请先恢复配套密钥。'
+ fi
+ exit 0
+fi
+[ ! -L "$source" ] && [ -f "$source" ] && [ "$(wc -c < "$source")" -eq 32 ] || fail '主密钥无效，无法保留或恢复已保存的凭据。'
+
+if [ "$1" = restore ] && { [ -e "$key" ] || [ -L "$key" ]; }; then
+ [ ! -L "$key" ] && [ -f "$key" ] && cmp -s -- "$key" "$saved" || fail '配置目录中的主密钥与卸载时保留的密钥不一致，请核对备份。'
+ chmod 600 -- "$key"
+else
+ tmp=$(mktemp -- "${destination}.XXXXXX")
+ trap 'rm -f -- "$tmp"' EXIT
+ cat -- "$source" > "$tmp"
+ mv -fT -- "$tmp" "$destination"
+fi
+if [ "$1" = restore ]; then rm -f -- "$saved"; fi

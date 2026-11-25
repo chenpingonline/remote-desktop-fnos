@@ -1,3 +1,21 @@
 #!/bin/bash
 set -eu
-exec "$(dirname "$0")/main" stop
+cmd=$(dirname "$0")
+"$cmd/main" stop
+case "${wizard_delete_data:-false}" in
+ true)
+  # fnOS can expose the package directories through symlinks.
+  dirs=()
+  for dir in "${TRIM_PKGVAR:?}" "${TRIM_PKGETC:?}"; do
+   resolved=$(realpath -e -- "$dir")
+   case "$resolved" in
+    /*/remote-desktop|/*/var|/*/etc) dirs+=("$resolved") ;;
+    *) echo "拒绝清理非应用目录：$dir" >&2; exit 1 ;;
+   esac
+  done
+  for dir in "${dirs[@]}"; do
+   find "$dir" -xdev -mindepth 1 -delete
+  done
+  ;;
+ *) exec "$cmd/uninstall_key" save ;;
+esac
