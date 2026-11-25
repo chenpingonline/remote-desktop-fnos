@@ -2,7 +2,7 @@
 
 通过浏览器管理个人连接，使用 RDP 访问 Windows 桌面，或通过密码认证连接 VNC 桌面。应用基于 Go、Vue 3 和 Apache Guacamole，在飞牛 NAS 上原生运行，无需安装 Java、Node.js 或 Docker。
 
-当前为开发预览。各版本改动见[更新日志](CHANGELOG.md)，设备兼容性与手测步骤见[兼容性说明](docs/COMPATIBILITY.md)。
+各版本改动见[更新日志](CHANGELOG.md)，设备兼容性与手测步骤见[兼容性说明](docs/COMPATIBILITY.md)。
 
 ## 主要功能
 

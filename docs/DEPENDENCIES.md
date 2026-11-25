@@ -20,7 +20,7 @@ FreeRDP 使用 Clang、Release/O2、关闭 LTO，并通过 BuildKit 按架构缓
 
 Guacamole 1.6.0 保留原版本及源码哈希，通过 `patch-freerdp3-lifecycle.py` 回移图形初始化时序修复：FreeRDP 3.31+ 在连接激活时才创建缓存，GDI 与绘制回调须移至 PostConnect。参考上游 [rdp.c（bb1ba8e）](https://github.com/apache/guacamole-server/blob/bb1ba8ed1414ec6a239cea265d4e9c7e23b9c6a3/src/protocols/rdp/rdp.c)。同时仅允许弃用警告不作为编译错误，避免 FreeRDP 3.x 仍保留的弃用声明阻断接口检测；其他编译错误检查保留。
 
-私有库闭包依据 guacd 和所有随包插件的 ldd 提取，不覆盖宿主 /usr/lib；glibc 及动态加载器使用宿主系统，故必须验证目标 fnOS 的 ABI。FreeRDP、LibVNCClient、Cairo、图像、加密和字体依赖以实际构建为准。CA 副本和 Debian 组件版权说明随包保存。正式分发前需按实际 LGPL 等组件补齐对应源码提供与重建材料；当前仅为本地开发预览，没有发布到应用市场。
+私有库闭包依据 guacd 和所有随包插件的 ldd 提取，不覆盖宿主 /usr/lib；glibc 及动态加载器使用宿主系统，故必须验证目标 fnOS 的 ABI。FreeRDP、LibVNCClient、Cairo、图像、加密和字体依赖以实际构建为准。CA 副本和 Debian 组件版权说明随包保存。正式分发前需按实际 LGPL 等组件补齐对应源码提供与重建材料；各版本安装包通过 GitHub Releases 分发。
 
 官方契约核对：[fnOS 统一网关](https://developer.fnnas.com/docs/core-concepts/gateway-registration/)（管理员 Header 为字符串 true/false）、[用户向导](https://developer.fnnas.com/docs/core-concepts/wizard/)、[Guacamole 协议](https://guacamole.apache.org/doc/gug/guacamole-protocol.html)、[JS 隧道实现](https://guacamole.apache.org/doc/guacamole-common-js/main_webapp_modules_Tunnel.js.html)。
 
