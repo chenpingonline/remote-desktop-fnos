@@ -9,7 +9,6 @@ import (
 	"github.com/coder/websocket"
 	"io"
 	"log"
-	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -323,7 +322,7 @@ func (a *App) tunnel(w http.ResponseWriter, r *http.Request, u User) {
 		defer a.mu.Unlock()
 		a.closeLocked(s, reason, reason != "USER_CLOSED")
 	}
-	up, e := (&net.Dialer{}).DialContext(ctx, "tcp", a.cfg.Guacd)
+	up, e := guac.DialContext(ctx, a.cfg.Guacd)
 	if e != nil {
 		finish("ENGINE_UNAVAILABLE")
 		return

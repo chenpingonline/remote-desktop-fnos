@@ -71,4 +71,7 @@ RUN cc /tmp/pin-rdp-certificate.c $(pkg-config --cflags --libs freerdp3 winpr3 o
     for mode in missing correct changed legacy other-port trusted-mismatch; do \
         RD_TEST_PIN_MODE="$mode" RD_TEST_PIN_TOOL=/pin python3 /tmp/test-certificate-diagnostic.py || exit 1; \
     done
+COPY guacd-unix-socket.patch /tmp/guacd-unix-socket.patch
+RUN patch -p1 < /tmp/guacd-unix-socket.patch && make -C src/guacd -j4 && make -C src/guacd install && \
+    cp /opt/remote-desktop/sbin/guacd /out/bin/ && python3 /tmp/test-vnc-password-auth.py --unix
 CMD ["/bin/true"]

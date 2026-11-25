@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"remote-desktop/internal/guac"
 	"remote-desktop/internal/rdpcert"
 	"remote-desktop/internal/secret"
 	"remote-desktop/internal/wol"
@@ -401,7 +402,7 @@ func (a *App) route(w http.ResponseWriter, r *http.Request, u User, p string) {
 	if p == "/capabilities" && method == "GET" {
 		ctx, cancel := context.WithTimeout(r.Context(), 500*time.Millisecond)
 		defer cancel()
-		c, e := (&net.Dialer{}).DialContext(ctx, "tcp", a.cfg.Guacd)
+		c, e := guac.DialContext(ctx, a.cfg.Guacd)
 		if e == nil {
 			c.Close()
 		}

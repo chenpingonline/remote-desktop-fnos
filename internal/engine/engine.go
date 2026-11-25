@@ -3,12 +3,14 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"remote-desktop/internal/guac"
 	"sync"
 	"syscall"
 	"time"
@@ -44,16 +46,25 @@ func Start(path, address, runtimeDir string, onExit func()) (*Supervisor, error)
 	return s, nil
 }
 func (s *Supervisor) launch(ctx context.Context) error {
-	host, port, e := net.SplitHostPort(s.address)
-	if e != nil {
-		return e
+	args := []string{"-f", "-L", "debug"}
+	if filepath.IsAbs(s.address) {
+		if err := clearStaleSocket(s.address); err != nil {
+			return err
+		}
+		args = append(args, "-b", s.address)
+	} else {
+		host, port, err := net.SplitHostPort(s.address)
+		if err != nil {
+			return err
+		}
+		probe, err := net.Listen("tcp", s.address)
+		if err != nil {
+			return fmt.Errorf("private engine port occupied: %w", err)
+		}
+		probe.Close()
+		args = append(args, "-b", host, "-l", port)
 	}
-	probe, e := net.Listen("tcp", s.address)
-	if e != nil {
-		return fmt.Errorf("private engine port occupied: %w", e)
-	}
-	probe.Close()
-	cmd := exec.Command(s.path, "-f", "-L", "debug", "-b", host, "-l", port)
+	cmd := exec.Command(s.path, args...)
 	cmd.SysProcAttr = processAttrs()
 	// A forked worker must not hold Wait open through inherited log pipes.
 	cmd.WaitDelay = 2 * time.Second
@@ -69,12 +80,36 @@ func (s *Supervisor) launch(ctx context.Context) error {
 	if ctx.Err() != nil || s.stopping {
 		return fmt.Errorf("engine stopping")
 	}
-	if e = cmd.Start(); e != nil {
+	if e := cmd.Start(); e != nil {
 		return e
 	}
 	s.cmd = cmd
 	return nil
 }
+
+// The app holds the data lock and the parent directory is private to its UID.
+func clearStaleSocket(path string) error {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSocket == 0 {
+		return fmt.Errorf("engine socket path is occupied: %s", path)
+	}
+	conn, err := net.DialTimeout("unix", path, 250*time.Millisecond)
+	if err == nil {
+		conn.Close()
+		return fmt.Errorf("engine socket is already listening: %s", path)
+	}
+	if !errors.Is(err, syscall.ECONNREFUSED) {
+		return err
+	}
+	return os.Remove(path)
+}
+
 func (s *Supervisor) watch(ctx context.Context) {
 	defer close(s.done)
 	for attempt := 0; ; attempt++ {
@@ -130,7 +165,9 @@ func (s *Supervisor) WaitReady(ctx context.Context) error {
 		case <-s.done:
 			return fmt.Errorf("engine stopped")
 		case <-ticker.C:
-			c, e := net.DialTimeout("tcp", s.address, 100*time.Millisecond)
+			probeCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+			c, e := guac.DialContext(probeCtx, s.address)
+			cancel()
 			if e == nil {
 				c.Close()
 				return nil

@@ -1,5 +1,5 @@
 import base64, collections, hashlib, os, pathlib, signal, socket, ssl, subprocess, time
-import io, select
+import io, select, tempfile
 from PIL import Image
 
 root=pathlib.Path('/qa');root.mkdir(exist_ok=True)
@@ -29,6 +29,10 @@ def wait_port(port):
         except OSError:time.sleep(.1)
     raise RuntimeError('port not ready '+str(port))
 try:
+    # The image can outlive a fixture certificate. Pin a fresh certificate for this run.
+    subprocess.run(['openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1',
+                    '-subj', '/CN=localhost', '-keyout', '/etc/xrdp/key.pem', '-out', '/etc/xrdp/cert.pem'],
+                   check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     shadow=os.environ.get('QA_SERVER')=='shadow'
     if shadow:
         shadow_env=dict(env,LD_LIBRARY_PATH='/qa-shadow/lib',DISPLAY=':91')
@@ -49,9 +53,20 @@ try:
         launch('sesman',['/usr/sbin/xrdp-sesman','--nodaemon'])
         launch('xrdp',['/usr/sbin/xrdp','--nodaemon'])
     wait_port(3389)
-    launch('guacd',['/out/bin/guacd','-f','-L','debug','-b','127.0.0.1','-l','14822'],env);wait_port(14822)
+    socket_dir = tempfile.TemporaryDirectory()
+    engine_socket = os.path.join(socket_dir.name, 'guacd.sock')
+    launch('guacd', ['/out/bin/guacd', '-f', '-L', 'debug', '-b', engine_socket], env)
+    c = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    for _ in range(200):
+        try:
+            c.connect(engine_socket)
+            break
+        except (FileNotFoundError, ConnectionRefusedError):
+            time.sleep(.1)
+    else:
+        raise RuntimeError('private engine socket did not become ready')
     fingerprint=hashlib.sha256(ssl.PEM_cert_to_DER_cert(pathlib.Path('/etc/xrdp/cert.pem').read_text())).hexdigest()
-    c=socket.create_connection(('127.0.0.1',14822),timeout=10);c.settimeout(12 if blackhole else 60);f=c.makefile('rb')
+    c.settimeout(12 if blackhole else 60);f=c.makefile('rb')
     def send(*parts):c.sendall((','.join(str(len(str(p)))+'.'+str(p) for p in parts)+';').encode())
     def read():
         parts=[]

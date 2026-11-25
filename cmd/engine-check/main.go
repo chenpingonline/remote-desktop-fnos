@@ -6,8 +6,8 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"net"
 	"os"
+	"path/filepath"
 	"remote-desktop/internal/engine"
 	"remote-desktop/internal/guac"
 	"time"
@@ -21,7 +21,8 @@ func main() {
 		panic(e)
 	}
 	defer os.RemoveAll(runtimeDir)
-	s, e := engine.Start(*path, "127.0.0.1:14822", runtimeDir, func() {})
+	address := filepath.Join(runtimeDir, "guacd.sock")
+	s, e := engine.Start(*path, address, runtimeDir, func() {})
 	if e != nil {
 		fmt.Fprintln(os.Stderr, e)
 		os.Exit(1)
@@ -33,7 +34,7 @@ func main() {
 		panic(e)
 	}
 	for _, protocol := range []string{"rdp", "vnc"} {
-		c, e := net.DialTimeout("tcp", "127.0.0.1:14822", time.Second)
+		c, e := guac.DialContext(ctx, address)
 		if e != nil {
 			panic(e)
 		}

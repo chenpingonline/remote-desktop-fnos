@@ -1,21 +1,32 @@
 #!/bin/bash
 set -eu
 cmd=$(dirname "$0")
-"$cmd/main" stop
-case "${wizard_delete_data:-false}" in
- true)
-  # fnOS can expose the package directories through symlinks.
-  dirs=()
-  for dir in "${TRIM_PKGVAR:?}" "${TRIM_PKGETC:?}"; do
-   resolved=$(realpath -e -- "$dir")
-   case "$resolved" in
-    /*/remote-desktop|/*/var|/*/etc) dirs+=("$resolved") ;;
-    *) echo "拒绝清理非应用目录：$dir" >&2; exit 1 ;;
-   esac
-  done
-  for dir in "${dirs[@]}"; do
-   find "$dir" -xdev -mindepth 1 -delete
-  done
-  ;;
- *) exec "$cmd/uninstall_key" save ;;
-esac
+
+if [ "${wizard_delete_data:-false}" != true ]; then
+ "$cmd/main" stop
+ exec "$cmd/uninstall_key" save
+fi
+
+reject() {
+ local message='无法确认卸载目录属于本存储空间的远程桌面应用，已取消删除。'
+ printf '%s\n' "$message" >&2
+ if [ -n "${TRIM_TEMP_LOGFILE:-}" ]; then printf '%s\n' "$message" >> "$TRIM_TEMP_LOGFILE"; fi
+ exit 1
+}
+
+# fnOS links target, var and etc to three distinct trees on the install volume.
+# Resolve both deletion targets before even running stop, which writes to var.
+target=$(realpath -e -- "${TRIM_APPDEST:?}") || reject
+[[ -d "$target" && "$target" == /*/@appcenter/remote-desktop ]] || reject
+volume=${target%/@appcenter/remote-desktop}
+if [ -n "${TRIM_APPDEST_VOL:-}" ]; then
+ declared_volume=$(realpath -e -- "$TRIM_APPDEST_VOL") || reject
+ [[ "$volume" == "$declared_volume" ]] || reject
+fi
+data=$(realpath -e -- "${TRIM_PKGVAR:?}") || reject
+config=$(realpath -e -- "${TRIM_PKGETC:?}") || reject
+[[ -d "$data" && "$data" == "$volume/@appdata/remote-desktop" ]] || reject
+[[ -d "$config" && "$config" == "$volume/@appconf/remote-desktop" ]] || reject
+
+TRIM_APPDEST="$target" TRIM_PKGVAR="$data" TRIM_PKGETC="$config" "$cmd/main" stop
+find "$data" "$config" -xdev -mindepth 1 -delete

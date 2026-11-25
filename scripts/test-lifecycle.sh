@@ -3,7 +3,11 @@
 # a Linux-native service binary and a test engine that owns its listener.
 set -euo pipefail
 : "${RD_LIFECYCLE_ROOT:?isolated test root required}" "${RD_LIFECYCLE_BIN:?native Linux service binary required}" "${RD_LIFECYCLE_ENGINE:?test engine required}" "${RD_LIFECYCLE_SOURCE:?package source required}"
-mkdir -p "$RD_LIFECYCLE_ROOT/target/bin" "$RD_LIFECYCLE_ROOT/var" "$RD_LIFECYCLE_ROOT/etc"
+export TRIM_APPDEST_VOL="$RD_LIFECYCLE_ROOT/volume"
+mkdir -p "$TRIM_APPDEST_VOL/@appcenter/remote-desktop/bin" "$TRIM_APPDEST_VOL/@appdata/remote-desktop" "$TRIM_APPDEST_VOL/@appconf/remote-desktop"
+ln -s "$TRIM_APPDEST_VOL/@appcenter/remote-desktop" "$RD_LIFECYCLE_ROOT/target"
+ln -s "$TRIM_APPDEST_VOL/@appdata/remote-desktop" "$RD_LIFECYCLE_ROOT/var"
+ln -s "$TRIM_APPDEST_VOL/@appconf/remote-desktop" "$RD_LIFECYCLE_ROOT/etc"
 cp "$RD_LIFECYCLE_BIN" "$RD_LIFECYCLE_ROOT/target/bin/remote-desktop"
 cp "$RD_LIFECYCLE_ENGINE" "$RD_LIFECYCLE_ROOT/target/bin/guacd"
 # Lifecycle tests stub crypto; the packaged native implementation has its own known-answer test.
@@ -20,7 +24,7 @@ trap cleanup EXIT
 [ ! -e "$TRIM_PKGETC/public-origin" ] && [ ! -e "$TRIM_PKGETC/gateway-gid" ]
 timeout 8 "$main" start
 read -r first_pid first_stamp < "$TRIM_PKGVAR/server.pid"
-[ "$(readlink "/proc/$first_pid/fd/9" 2>/dev/null || true)" != "$TRIM_PKGVAR/lifecycle.lock" ] || { echo 'Service inherited lifecycle lock' >&2; exit 1; }
+[ "$(readlink "/proc/$first_pid/fd/9" 2>/dev/null || true)" != "$(readlink -f "$TRIM_PKGVAR/lifecycle.lock")" ] || { echo 'Service inherited lifecycle lock' >&2; exit 1; }
 timeout 3 "$main" status
 timeout 3 "$main" start
 read -r second_pid second_stamp < "$TRIM_PKGVAR/server.pid"
@@ -45,7 +49,7 @@ echo 'Stale socket recovery without curl: PASS'
 (
  exec 9>"$TRIM_PKGVAR/lifecycle.lock"
  flock 9
- "$TRIM_APPDEST/bin/remote-desktop" --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --web "$TRIM_APPDEST/web" --origin https://nas.test --socket "$TRIM_APPDEST/app.sock" --guacd 127.0.0.1:14822 --engine "$TRIM_APPDEST/bin/guacd" </dev/null >> "$TRIM_PKGVAR/server.log" 2>&1 &
+ "$TRIM_APPDEST/bin/remote-desktop" --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --web "$TRIM_APPDEST/web" --origin https://nas.test --socket "$TRIM_APPDEST/app.sock" --engine "$TRIM_APPDEST/bin/guacd" </dev/null >> "$TRIM_PKGVAR/server.log" 2>&1 &
  legacy_pid=$!
  legacy_stamp=$(awk '{print $22}' "/proc/$legacy_pid/stat")
  printf '%s %s\n' "$legacy_pid" "$legacy_stamp" > "$TRIM_PKGVAR/server.pid"
@@ -55,7 +59,7 @@ for ((i=0;i<10;i++)); do
  sleep 0.2
 done
 read -r legacy_pid legacy_stamp < "$TRIM_PKGVAR/server.pid"
-[ "$(readlink "/proc/$legacy_pid/fd/9")" = "$TRIM_PKGVAR/lifecycle.lock" ]
+[ "$(readlink "/proc/$legacy_pid/fd/9")" = "$(readlink -f "$TRIM_PKGVAR/lifecycle.lock")" ]
 timeout 8 "$main" stop
 echo 'Verified legacy service lock recovery on stop: PASS'
 # Legacy parameters must no longer influence startup after an upgrade.
@@ -106,7 +110,15 @@ cmp "$RD_LIFECYCLE_ROOT/original.key" "$TRIM_PKGETC/master.key"
 timeout 8 "$main" start
 timeout 3 "$main" status
 echo 'Default and explicit retention, paired key restore and service restart: PASS'
+mkdir -p "$RD_LIFECYCLE_ROOT/other/etc"
+touch "$RD_LIFECYCLE_ROOT/other/etc/keep"
+if env "$field=$purge" TRIM_PKGETC="$RD_LIFECYCLE_ROOT/other/etc" "$uninstall"; then exit 1; fi
+if env "$field=$purge" TRIM_PKGVAR="$TRIM_PKGETC" "$uninstall"; then exit 1; fi
+ln -s "$RD_LIFECYCLE_ROOT/other/etc" "$RD_LIFECYCLE_ROOT/wrong-link"
+if env "$field=$purge" TRIM_PKGVAR="$RD_LIFECYCLE_ROOT/wrong-link" "$uninstall"; then exit 1; fi
+[ -f "$RD_LIFECYCLE_ROOT/other/etc/keep" ] && [ -f "$TRIM_PKGVAR/app.db" ] && [ -f "$TRIM_PKGETC/master.key" ] || exit 1
+"$main" status
 env "$field=$purge" "$uninstall"
-[ -z "$(find "$TRIM_PKGVAR" "$TRIM_PKGETC" -mindepth 1 -print -quit)" ]
+[ -z "$(find -H "$TRIM_PKGVAR" "$TRIM_PKGETC" -mindepth 1 -print -quit)" ]
 [ -s "$RD_LIFECYCLE_ROOT/original.key" ]
 echo 'Explicit purge removes private data and backups, preserving external files: PASS'

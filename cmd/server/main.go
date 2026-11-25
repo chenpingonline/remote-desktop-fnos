@@ -25,7 +25,7 @@ func main() {
 	origin := flag.String("origin", "http://127.0.0.1:18080", "development listener origin")
 	dev := flag.Bool("dev", false, "enable authenticated loopback development listener")
 	socket := flag.String("socket", "", "trusted gateway Unix socket path")
-	guacd := flag.String("guacd", "127.0.0.1:14822", "private guacd loopback endpoint")
+	guacd := flag.String("guacd", "", "optional loopback guacd address in development mode")
 	enginePath := flag.String("engine", "", "absolute path to owned guacd binary")
 	backup := flag.String("backup", "", "create an offline backup and exit")
 	healthPath := flag.String("healthcheck", "", "check an existing service Unix socket and exit")
@@ -45,10 +45,6 @@ func main() {
 	}
 	if *probePath != "" {
 		os.Exit(probeSocket(*probePath))
-	}
-	host, _, e := net.SplitHostPort(*guacd)
-	if e != nil || net.ParseIP(host) == nil || !net.ParseIP(host).IsLoopback() {
-		log.Fatal("guacd must use a loopback IP")
 	}
 	if *backup == "" && (*dev) == (*socket != "") {
 		log.Fatal("choose exactly one: --dev or --socket")
@@ -70,6 +66,24 @@ func main() {
 			log.Fatal(err)
 		}
 		return
+	}
+	runtimeDir, e := filepath.Abs(filepath.Join(*data, "engine"))
+	if e != nil {
+		log.Fatal(e)
+	}
+	if *dev {
+		if *guacd == "" {
+			*guacd = "127.0.0.1:14822"
+		}
+		host, _, err := net.SplitHostPort(*guacd)
+		if err != nil || !net.ParseIP(host).IsLoopback() {
+			log.Fatal("development guacd must use a loopback IP")
+		}
+	} else {
+		if *guacd != "" || *enginePath == "" {
+			log.Fatal("gateway mode requires an owned --engine on its private socket")
+		}
+		*guacd = filepath.Join(runtimeDir, "guacd.sock")
 	}
 	var l net.Listener
 	if *dev {
@@ -98,7 +112,7 @@ func main() {
 	defer a.Close()
 	var supervisor *engine.Supervisor
 	if *enginePath != "" {
-		supervisor, e = engine.Start(*enginePath, *guacd, filepath.Join(*data, "engine"), a.EngineExited)
+		supervisor, e = engine.Start(*enginePath, *guacd, runtimeDir, a.EngineExited)
 		if e != nil {
 			log.Fatal(e)
 		}
@@ -110,8 +124,6 @@ func main() {
 			supervisor.Stop()
 			log.Fatal(e)
 		}
-	} else if !*dev {
-		log.Fatal("gateway mode requires an owned --engine binary")
 	}
 	srv := &http.Server{Handler: a, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16 << 10}
 	stop := make(chan os.Signal, 1)

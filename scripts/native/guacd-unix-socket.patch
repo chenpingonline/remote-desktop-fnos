@@ -1,0 +1,75 @@
+--- a/src/guacd/daemon.c
++++ b/src/guacd/daemon.c
+@@ -46,6 +46,7 @@
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ #include <sys/types.h>
++#include <sys/un.h>
+ #include <sys/wait.h>
+ #include <unistd.h>
+ 
+@@ -339,6 +340,24 @@
+ 
+     /* Log start */
+     guacd_log(GUAC_LOG_INFO, "Guacamole proxy daemon (guacd) version " VERSION " started");
++
++    /* The fnOS package supplies an absolute socket path inside its 0700 runtime directory. */
++    const int unix_socket = config->bind_host && config->bind_host[0] == '/';
++    if (unix_socket) {
++        struct sockaddr_un addr = { .sun_family = AF_UNIX };
++        if (strlen(config->bind_host) >= sizeof(addr.sun_path)) {
++            guacd_log(GUAC_LOG_ERROR, "Unix socket path is too long.");
++            return EXIT_FAILURE;
++        }
++        strcpy(addr.sun_path, config->bind_host);
++        socket_fd = socket(AF_UNIX, SOCK_STREAM, 0);
++        if (socket_fd < 0 || bind(socket_fd, (struct sockaddr*) &addr, sizeof(addr)) < 0
++                || chmod(addr.sun_path, 0600) < 0) {
++            guacd_log(GUAC_LOG_ERROR, "Cannot bind private Unix socket: %s", strerror(errno));
++            return EXIT_FAILURE;
++        }
++        goto socket_bound;
++    }
+ 
+     /* Get addresses for binding */
+     if ((retval = getaddrinfo(config->bind_host, config->bind_port,
+@@ -414,6 +433,14 @@
+         exit(EXIT_FAILURE);
+     }
+ 
++    /* Log listening status */
++    guacd_log(GUAC_LOG_INFO, "Listening on host %s, port %s", bound_address, bound_port);
++
++    /* Free addresses */
++    freeaddrinfo(addresses);
++
++socket_bound:
++    (void) 0;
+ #ifdef ENABLE_SSL
+     /* Init SSL if enabled */
+     if (config->key_file != NULL || config->cert_file != NULL) {
+@@ -508,12 +535,6 @@
+     sigaction(SIGINT, &signal_stop_action, NULL);
+     sigaction(SIGTERM, &signal_stop_action, NULL);
+ 
+-    /* Log listening status */
+-    guacd_log(GUAC_LOG_INFO, "Listening on host %s, port %s", bound_address, bound_port);
+-
+-    /* Free addresses */
+-    freeaddrinfo(addresses);
+-
+     /* Listen for connections */
+     if (listen(socket_fd, 5) < 0) {
+         guacd_log(GUAC_LOG_ERROR, "Could not listen on socket: %s", strerror(errno));
+@@ -541,8 +562,9 @@
+         /* Set TCP_NODELAY to avoid any latency that would otherwise be added by the OS'
+          * networking stack and Nagle's algorithm */
+         const int SO_TRUE = 1;
+-        setsockopt(connected_socket_fd, IPPROTO_TCP, TCP_NODELAY,
+-                (const void*) &SO_TRUE, sizeof(SO_TRUE));
++        if (!unix_socket)
++            setsockopt(connected_socket_fd, IPPROTO_TCP, TCP_NODELAY,
++                    (const void*) &SO_TRUE, sizeof(SO_TRUE));
+ 
+         /* Create parameters for connection thread */
+         guacd_connection_thread_params* params = guac_mem_alloc(sizeof(guacd_connection_thread_params));

@@ -7,6 +7,8 @@ import socket
 import struct
 import subprocess
 import threading
+import tempfile
+import sys
 
 
 def exact(conn, length):
@@ -35,6 +37,19 @@ def read_instruction(conn):
         result.append(exact(conn, int(length)).decode())
         if exact(conn, 1) == b';':
             return result
+
+
+def connect_engine(timeout):
+    if engine_socket is None:
+        return socket.create_connection(('127.0.0.1', 14829), timeout)
+    conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    conn.settimeout(timeout)
+    try:
+        conn.connect(engine_socket)
+        return conn
+    except OSError:
+        conn.close()
+        raise
 
 
 def check(schemes, should_connect):
@@ -90,7 +105,7 @@ def check(schemes, should_connect):
             listener.close()
 
     threading.Thread(target=rfb_server, daemon=True).start()
-    with socket.create_connection(('127.0.0.1', 14829), timeout=10) as conn:
+    with connect_engine(10) as conn:
         conn.settimeout(10)
         conn.sendall(encode('select', 'vnc'))
         args = read_instruction(conn)
@@ -118,12 +133,15 @@ def check(schemes, should_connect):
 
 
 env = dict(os.environ, LD_LIBRARY_PATH='/out/lib', OPENSSL_MODULES='/out/lib/ossl-modules')
-process = subprocess.Popen(['/out/bin/guacd', '-f', '-b', '127.0.0.1', '-l', '14829'], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+runtime = tempfile.TemporaryDirectory()
+engine_socket = os.path.join(runtime.name, 'guacd.sock') if '--unix' in sys.argv[1:] else None
+bind_args = ['-b', engine_socket] if engine_socket else ['-b', '127.0.0.1', '-l', '14829']
+process = subprocess.Popen(['/out/bin/guacd', '-f', *bind_args], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 try:
     import time
     for _ in range(100):
         try:
-            with socket.create_connection(('127.0.0.1', 14829), timeout=.1):
+            with connect_engine(.1):
                 break
         except OSError:
             time.sleep(.05)
@@ -133,3 +151,4 @@ try:
 finally:
     process.terminate()
     process.wait(timeout=5)
+    runtime.cleanup()

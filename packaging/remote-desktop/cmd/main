@@ -48,12 +48,12 @@ start() {
   error 'RDP 认证组件自检失败，请检查完整安装包与 server.log。'
   return 1
  fi
- "$binary" --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --web "$TRIM_APPDEST/web" --socket "$socket" --guacd 127.0.0.1:14822 --engine "$TRIM_APPDEST/bin/guacd" </dev/null >> "$TRIM_PKGVAR/server.log" 2>&1 9>&- &
+ "$binary" --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --web "$TRIM_APPDEST/web" --socket "$socket" --engine "$TRIM_APPDEST/bin/guacd" </dev/null >> "$TRIM_PKGVAR/server.log" 2>&1 9>&- &
  pid=$!
  stamp=$(awk '{print $22}' "/proc/$pid/stat")
  printf '%s %s\n' "$pid" "$stamp" > "$pidfile"
  for ((i=0;i<15;i++)); do if status; then return 0; fi; kill -0 "$pid" 2>/dev/null || break; sleep 1; done
- error '启动未通过健康检查，请检查网关组权限、14822 端口与 server.log。'
+ error '启动未通过健康检查，请检查网关组权限、引擎 Socket 与 server.log。'
  if [ -r "$TRIM_PKGVAR/server.log" ]; then error "$(tail -n 5 "$TRIM_PKGVAR/server.log")"; fi
  stop || true
  return 1
