@@ -1,79 +1,102 @@
+<div align="center">
+
+<img src="packaging/remote-desktop/ICON_256.PNG" alt="远程桌面应用图标" width="112" />
+
 # 远程桌面 for fnOS
 
-通过浏览器管理个人连接，使用 RDP 访问 Windows 桌面，或通过密码认证连接 VNC 桌面。应用基于 Go、Vue 3 和 Apache Guacamole，在飞牛 NAS 上原生运行，无需安装 Java、Node.js 或 Docker。
+**在浏览器中使用 Windows RDP 和 VNC 远程桌面**
 
-各版本改动见[更新日志](CHANGELOG.md)，设备兼容性与手测步骤见[兼容性说明](docs/COMPATIBILITY.md)。
+把常用电脑保存为连接，在多个桌面间切换、复制粘贴内容，或在连接前唤醒局域网设备。
+
+[![最新版本](https://img.shields.io/github/v/release/chenpingonline/remote-desktop-fnos?display_name=tag)](https://github.com/chenpingonline/remote-desktop-fnos/releases/latest)
+[![下载量](https://img.shields.io/github/downloads/chenpingonline/remote-desktop-fnos/total)](https://github.com/chenpingonline/remote-desktop-fnos/releases)
+
+[下载安装包](https://github.com/chenpingonline/remote-desktop-fnos/releases/latest) · [更新日志](CHANGELOG.md) · [兼容性说明](docs/COMPATIBILITY.md) · [问题反馈](https://github.com/chenpingonline/remote-desktop-fnos/issues)
+
+</div>
+
+![“我的连接”界面示例，可查看设备连通状态、收藏连接或唤醒设备](docs/images/connections.png)
+
+## 安装与首次连接
+
+从上方“下载安装包”进入 GitHub Releases，按 **NAS 的处理器架构**选择 FPK。安装包内置桌面引擎，无需在 NAS 上另外安装 Docker、Java 或 Node.js。
+
+| NAS 处理器 | 安装包文件名 |
+| --- | --- |
+| Intel 或 AMD 64 位（x86_64） | `remote-desktop-<版本>-x86.fpk` |
+| ARM 64 位（ARM64） | `remote-desktop-<版本>-arm.fpk` |
+
+1. 在飞牛「应用中心 → 手动安装」中选择下载的 FPK。升级已有安装时，选择对应架构的新版 FPK 即可。每个包都附有同名的 `.sha256` 校验文件。
+2. 在目标电脑上启用 **Windows 远程桌面（RDP）** 或 **VNC 服务（密码认证）**，并确认 NAS 能访问该电脑的服务端口。
+3. 打开「远程桌面 → 我的连接 → 新建连接」，选择协议，填写名称、主机地址和端口后保存。
+4. 在连接卡片上点击「连接」，按提示选择凭据或输入登录信息。首次连接自签名证书的 RDP 主机时，先核对证书指纹，再决定是否信任。
 
 ## 主要功能
 
-- 个人连接、单层分组、搜索与协议筛选；分组删除保留连接；不预置虚构连接。
-- RDP / VNC 字段校验和参数白名单；服务端决定目标与协议参数，不接受任意透传。
-- 个人凭据元数据；AES-256-GCM 加密账号、域和密码，随机 nonce，绑定归属、ID、类型和密钥版本；列表向凭据所属用户返回用户名和域，密码不回显，编辑时密码留空保留原值。
-- 短期内存凭据（60 秒）及单会话领取；票据仅存 SHA-256 摘要（45 秒）；原子消费与状态转换。
-- 会话状态、每人 2 / 总共 4 默认配额、30 秒建连超时、待连接过期、取消、幂等关闭、空闲与最长时长限制。管理员可调整配额和时长。
-- Guacamole 按参数名握手、Unicode 码点流式解析、内部 UUID / ping、消息大小与写入超时限制。
-- 官方 JS 1.6.0 桌面画布、多会话标签、重新连接、缩放、全屏、特殊键与失焦释放；显式 UTF-8 文本剪贴板。
-- Windows RDP 跨会话文件剪贴板。两个连接分别启用后，在 A 复制文件，切到 B 的资源管理器即可粘贴。每次最多 64 个普通文件、合计 256 MiB。
-- Unix Socket 网关身份；独立开发认证；同源检查、CSRF、对象归属和版本冲突处理。
-- 私有 guacd 前台进程组管理，通过应用私有 Unix Socket 通信，支持有限次数的退避重启；引擎退出终止相关会话。
-- SQLite WAL、版本化结构、单实例锁、启动遗留会话中断、配对密钥的一致性备份、操作审计。
+| 功能 | 使用方式 |
+| --- | --- |
+| 多桌面切换 | 在不同标签页中操作多台电脑，可缩放、全屏、发送特殊按键或重新连接。 |
+| 连接与凭据管理 | 分组、收藏和搜索常用连接，查看端口状态、延迟和会话记录。每位用户管理自己的连接，保存的凭据使用 AES-256-GCM 加密。 |
+| 剪贴板共享 | 在本机与远程桌面之间复制粘贴文本。两个 Windows RDP 会话都启用文件剪贴板后，可在会话之间复制普通文件，每次最多 64 个、合计 256 MiB。 |
+| 局域网唤醒 | 填写设备的 MAC 地址后，可从连接卡片或「网络唤醒」页面发送唤醒指令。广播地址默认由 NAS 选择。 |
 
-没有接入共享连接、音频、多屏、ARD 账号认证或 NAS 注销事件。剪贴板兼容性、中文输入、最低 fnOS 版本和长期资源稳定性仍待实机验证。当前单主密钥 `key1`，自动密钥轮换尚未实现。
+### 连接与兼容性
 
-## 本地启动
+- **网络路径**：浏览器通过飞牛统一网关访问应用，由 NAS 上的桌面引擎连接目标电脑。应用使用普通应用账号运行，通过私有 Unix Socket 通信，无需为应用另开公网端口。
+- **连接排查**：卡片显示“端口可达”表示 NAS 可以建立 TCP 连接。若仍然无法进入桌面，RDP 请检查账号权限、凭据和证书。VNC 请确认服务端已启用密码认证。仅提供 Apple Remote Desktop 账号认证的设备需要调整认证方式。
+- **验证范围**：x86 fnOS 真机已有原位升级与网关访问记录，两种架构的安装包均已在隔离 Linux 环境中验证。ARM64 fnOS 真机安装、真实 Windows RDP 和 macOS VNC 登录仍待验证。详见[验证记录](docs/TEST-RESULTS.md)和[兼容性说明](docs/COMPATIBILITY.md)。
 
-需要 Go（见 go.mod）、Node.js 22+。设置仅用于本地的随机访问令牌，例如在终端执行 `export RD_DEV_TOKEN="$(openssl rand -hex 32)"`，保留在当前终端环境，然后运行：
+## 升级、卸载与备份
+
+升级时，应用先停止服务并备份数据库和配套主密钥。卸载向导默认保留数据，在**原存储空间**重装后可继续使用原有连接和凭据。选择“永久删除”会一并清除配置、数据库、日志和应用内备份。
+
+<details>
+<summary>手动备份与恢复</summary>
+
+在 fnOS 应用目录中，`TRIM_PKGETC` 保存配置和主密钥，`TRIM_PKGVAR` 保存数据库、日志和应用内备份，`TRIM_APPDEST` 是程序目录。需要在卸载后保留独立备份时，先停止应用，使用一个位于应用目录之外的新私有目录作为备份目标：
 
 ```bash
+"$TRIM_APPDEST/bin/remote-desktop" \
+  --data "$TRIM_PKGVAR" \
+  --key "$TRIM_PKGETC/master.key" \
+  --backup /path/to/new/private-backup
+```
+
+恢复前停止应用并备份当前数据。从同一份备份恢复 `app.db` 到数据目录、`master.key` 到配置目录，确认文件属主及私有权限正确，清理旧数据库遗留的 WAL / SHM 文件后再启动。回滚程序版本时也要使用匹配的数据与密钥。
+
+</details>
+
+## 本地开发与打包
+
+开发环境使用 Go（版本见 [go.mod](go.mod)）和 Node.js 22+。在仓库根目录启动本地开发服务：
+
+```bash
+export RD_DEV_TOKEN="$(openssl rand -hex 32)"
 ./scripts/dev.sh
 ```
 
-打开 http://127.0.0.1:18080/app/remote-desktop/ ，输入该环境变量的值。服务仅监听回环，忽略任何客户端 `X-Trim-*` 身份。开发模式下用户固定为本地开发者。令牌不写入 URL、日志或浏览器持久存储；会话 Cookie 为 HttpOnly / SameSite=Strict。开发数据保存在 `.data`，主密钥默认 `.data/master.key`，请一起备份。
+在浏览器打开 `http://127.0.0.1:18080/app/remote-desktop/`，输入同一终端中的 `RD_DEV_TOKEN`。开发服务仅监听回环地址，数据保存在 `.data`。测试真实桌面连接时，还需在本机运行 guacd，默认地址为 `127.0.0.1:14822`。
 
-没有 guacd 时仍可管理连接，桌面连接会明确失败。需要本地协议测试时，显式指定受信任的 `--guacd 127.0.0.1:14822`；生产网关模式必须提供 `--engine /absolute/path/guacd`，由应用启动。后端通过应用账号专用目录（0700）中的 `engine/guacd.sock`（0600）访问引擎。
-
-不要对开发端口配置公网转发。生产 Unix Socket 模式只在 fnOS 可信网关后使用，页面通过当前 NAS HTTP 或 HTTPS 地址自动初始化。
-
-## 构建 fnOS 安装包
-
-构建需要 Docker、fnpack 1.2.3、Go 和 Node.js。版本号取自 `packaging/remote-desktop/manifest`。
+构建 FPK 还需要 Docker 和 fnpack 1.2.3。版本取自[应用 manifest](packaging/remote-desktop/manifest)，安装包和 SHA-256 校验文件输出到 `dist/`：
 
 ```bash
-./scripts/build.sh amd64 # x86_64，默认架构
-./scripts/build.sh arm64 # ARM64
+./scripts/build.sh amd64
+./scripts/build.sh arm64
 ```
 
-脚本按目标架构编译 Go 后端、Guacamole 原生引擎及依赖，并检查包内 ELF 架构。安装包和对应的 SHA-256 校验文件输出到 `dist/`，文件名分别为 `remote-desktop-<版本>-x86.fpk` 和 `remote-desktop-<版本>-arm.fpk`。ARM64 包仍待 NAS 实机验证。
-
-安装不需要填写访问来源、IP、域名或网关 GID。应用通过统一网关获得 NAS 登录身份，页面在当前访问地址下初始化绑定用户和来源的令牌，支持 HTTP／HTTPS 的多个 IP/域名及代理改写内部 Host。Socket 使用包用户默认组和 `0660` 权限。旧版来源/GID 文件仅作为回滚材料保留，不参与启动。
-
-## 验证
+<details>
+<summary>运行测试</summary>
 
 ```bash
 go test -race ./...
 go vet ./...
+npm --prefix web ci
 npm --prefix web run build
 python3 scripts/test-relay-ui.py
 ```
 
-浏览器集成测试需要 Playwright Chromium。测试脚本使用独立的本地数据和令牌启动 Go 服务，并通过模拟远程桌面协议验证界面流程。
+最后一项需要 Playwright Chromium，使用独立的本地数据、Go 服务和模拟桌面协议检查浏览器操作流程。
 
-## 运维与恢复
+</details>
 
-- 配置 / 密钥：`TRIM_PKGETC`；数据库 / 日志 / 备份：`TRIM_PKGVAR`；程序、私有库、静态文件和 Socket：`TRIM_APPDEST`。
-- `cmd/main start|stop|status` 串行执行；重复停止成功；status 运行返回 0、停止返回 3。进程 PID 与 Linux `/proc` 可执行路径、启动时间一起校验，健康检查使用本应用 Socket。
-- 升级前停止服务，执行 `VACUUM INTO` 一致性备份，并配对保存主密钥、来源配置、GID 和版本。备份目标空间不足或失败时升级应中止。
-- 手动离线备份：停止服务后运行 `bin/remote-desktop --data "$TRIM_PKGVAR" --key "$TRIM_PKGETC/master.key" --origin "https://实际NAS来源" --backup /新的私有备份目录`。数据锁禁止对运行中的数据库重复启动维护进程。
-- 恢复时先停止应用，备份当前数据，再将同一备份中的 `app.db`、`master.key`、来源与 GID 分别恢复到业务和配置目录，确认所有权及私有权限后启动。不要留下另一套数据库的 WAL / SHM 文件。旧版本回滚必须使用匹配的数据与密钥。
-- 卸载向导默认保留应用数据。选择原存储空间重装时，安装脚本会从数据目录恢复主密钥，以便继续使用原连接和凭据。选择永久删除会同时清空配置、数据库、日志和应用内备份；如需日后恢复，请先将配套的数据库和主密钥备份到应用目录外的私有位置。
-- 当前审计最多 10,000 条且保留 90 天；终态会话元数据保留 90 天；运行日志应由宿主管理轮转。进程崩溃后的完整进程树回收与 Go 自身自动恢复仍需 fnOS 验证。
-
-## 第三方组件
-
-Apache JS 从官方发布包生成，未改上游模块，末尾添加 ES 模块导出。版本、校验值和再生成脚本见 `scripts/vendor-client.py`；LICENSE / NOTICE 位于 `web/src/vendor`。原生构建输出保存 Apache 与 Debian 组件版权文件及已安装版本。详见 [docs/DEPENDENCIES.md](docs/DEPENDENCIES.md)。
-
-## 相关文档
-
-- [需求与设计](doc/fnos_remote_desktop_development_v1.0.md)
-- [前端开发说明](web/README.md)
-- [前端迁移记录](docs/FRONTEND_MIGRATION.md)
+项目使用 Go、Vue 3 和 Apache Guacamole。第三方组件的版本、来源和许可证见[依赖说明](docs/DEPENDENCIES.md)。参与开发可参阅[需求与设计](doc/fnos_remote_desktop_development_v1.0.md)、[前端开发说明](web/README.md)、[前端迁移记录](docs/FRONTEND_MIGRATION.md)和[桌面缩放说明](docs/display-scaling.md)。
